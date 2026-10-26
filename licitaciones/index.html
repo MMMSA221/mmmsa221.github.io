@@ -137,7 +137,13 @@
 .lt-table th{text-transform:none!important;letter-spacing:0!important}
 .lt-bar{flex-wrap:wrap;align-items:flex-end!important;justify-content:flex-start!important;gap:12px 16px!important}
 #f-nota{flex-basis:100%}
-.filtro select{min-width:180px;max-width:260px}
+.filtro select{min-width:160px;max-width:240px}
+.lt-tools{flex-wrap:wrap}
+#f-limpiar{display:block;padding:0;margin:-4px 0 12px;text-align:left;min-height:32px}
+.lt-tile[data-filtro]{cursor:pointer;text-align:left;font:inherit;color:inherit;transition:background 140ms ease-out}
+.lt-tile[data-filtro]:hover{background:var(--trama)!important}
+.lt-tile[aria-pressed="true"]{background:var(--hoja)!important}
+.lt-tile[aria-pressed="true"] .lt-tile-label{color:var(--tinta);text-decoration:underline;text-decoration-color:var(--naranja);text-decoration-thickness:2px;text-underline-offset:4px}
 .datos{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--suave);margin:6px 0 18px}
 .datos label.eci-btn{display:inline-flex;align-items:center;min-height:36px;font-size:13px;cursor:pointer}
 .datos input{position:absolute;left:-9999px}
@@ -147,7 +153,7 @@
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Licitaciones de Abastecimiento Estratégico</span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Licitaciones de Abastecimiento Estratégico <span style="font-weight:400;font-size:12px">· versión 26-10 d</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
@@ -173,10 +179,7 @@
       <button type="button" data-v="ARG">Argentina</button>
       <button type="button" data-v="PY">Paraguay</button>
     </div>
-    <label class="lt-field filtro">Provincia<select id="f-prov"><option value="">Todas</option></select></label>
-    <label class="lt-field filtro">Emprendimiento<select id="f-emp"><option value="">Todos</option></select></label>
-    <button type="button" class="eci-link" id="f-limpiar" hidden>Quitar filtros</button>
-    <span class="lt-note" id="f-nota">Fuente: informe semanal de Estados de Procesos Licitatorios (hojas ARG y PY).</span>
+    <span class="lt-note">Fuente: informe semanal de Estados de Procesos Licitatorios (hojas ARG y PY).</span>
   </div>
 
   <nav class="lt-tabs" role="tablist" aria-label="Secciones">
@@ -213,19 +216,26 @@
       <h2>Licitaciones en gestión</h2>
       <p class="lt-note">Días restantes = días de licitación y adjudicación de la categoría menos los días desde la recepción de RFQ (o el relanzamiento) hasta la fecha del informe. Ordenadas de la más atrasada a la más holgada.</p>
       <div class="lt-tools">
+        <label class="lt-field filtro" for="f-prov">Provincia
+          <select id="f-prov"><option value="">Todas</option></select>
+        </label>
+        <label class="lt-field filtro" for="f-emp">Emprendimiento
+          <select id="f-emp"><option value="">Todos</option></select>
+        </label>
         <label class="lt-field" for="f-resp">Asignada a
           <select id="f-resp"></select>
         </label>
         <label class="lt-field" for="f-semaf">Situación
           <select id="f-semaf">
             <option value="">Todas</option>
-            <option>Vencida</option><option>Por vencer</option><option>En plazo</option><option>Sin fecha RFQ</option><option>Sin plazo</option>
+            <option>Vencida</option><option>Por vencer</option><option>En plazo</option><option value="__sin">Sin fecha RFQ o sin plazo</option><option>Sin fecha RFQ</option><option>Sin plazo</option>
           </select>
         </label>
         <label class="lt-field" for="f-q-act">Buscar
           <input id="f-q-act" type="search" placeholder="Detalle, proyecto, plaza…">
         </label>
       </div>
+      <p class="lt-note" id="f-nota" hidden></p><button type="button" class="eci-link" id="f-limpiar" hidden>Quitar filtros de provincia y emprendimiento</button>
       <div class="lt-tablebox">
         <table class="lt-table" id="tb-activas" data-source="procesos" data-row-key="clave">
           <thead><tr>
@@ -364,6 +374,9 @@
     if (!r.ok) { let m = ''; try { m = (await r.json()).message; } catch (e) { } throw new Error(m || 'Error ' + r.status); }
     return r.status === 204 ? null : r.json().catch(function () { return null; });
   };
+  // Iniciales del informe → nombre completo (las demás quedan como vienen)
+  const PERSONAS = { LF: 'Laura Fuster', PJ: 'Pablo Jover' };
+  const nombrePersona = function (a) { return String(a || '').split('/').map(function (x) { x = x.trim(); return PERSONAS[x] || x; }).join(' / '); };
   const normProv = function (p) { p = (p || '').trim(); return p === 'Neuquen' ? 'Neuquén' : p || 'Sin provincia'; };
   const hayFiltro = function () { return !!(PARAMS.prov || PARAMS.emp); };
   let PLAZA = {};   // clave del proceso → provincia, para filtrar los movimientos
@@ -398,9 +411,8 @@
     se.innerHTML = '<option value="">Todos</option>' + emps.map(function (p) { return '<option>' + p.replace(/</g, '&lt;') + '</option>'; }).join('');
     se.value = emps.indexOf(PARAMS.emp) >= 0 ? PARAMS.emp : '';
     document.getElementById('f-limpiar').hidden = !hayFiltro();
-    document.getElementById('f-nota').textContent = hayFiltro()
-      ? 'Con filtros: la evolución semanal muestra el total del informe; el resto de la página, solo lo filtrado.'
-      : 'Fuente: informe semanal de Estados de Procesos Licitatorios (hojas ARG y PY).';
+    const nota = document.getElementById('f-nota'); nota.hidden = !hayFiltro();
+    nota.textContent = 'Provincia y emprendimiento también ajustan los indicadores de arriba y las otras pestañas; la evolución semanal muestra siempre el total del informe.';
   }
   document.getElementById('f-prov').addEventListener('change', function (e) { dash.setParams({ prov: e.target.value, emp: '' }); });
   document.getElementById('f-emp').addEventListener('change', function (e) { dash.setParams({ emp: e.target.value }); });
@@ -430,6 +442,7 @@
       Object.keys(CACHE).forEach(function (k) { delete CACHE[k]; });
       filas.forEach(function (f) { if (FUENTES.indexOf(f.id) >= 0) RAW[f.id] = d3.csvParse(f.data.csv || ''); });
       PLAZA = {}; (RAW.procesos || []).forEach(function (r) { PLAZA[r.clave] = normProv(r.plaza); });
+      ['procesos', 'movimientos'].forEach(function (k) { (RAW[k] || []).forEach(function (r) { r.asignada = nombrePersona(r.asignada); }); });
       const falta = FUENTES.filter(function (k) { return !RAW[k]; });
       const ult = filas.map(function (f) { return f.actualizado; }).sort().pop();
       const quien = (filas.find(function (f) { return f.actualizado === ult; }) || {}).actualizado_por;
@@ -688,7 +701,7 @@ dash.calc('por_categoria', {
     const act = d.data.filter((r) => r.activa === 'si' && enPais(r));
     setOptions($('#f-resp'), [...new Set(act.map((r) => r.asignada))].sort(), 'Todas las personas');
     const resp = $('#f-resp').value, sem = $('#f-semaf').value, q = $('#f-q-act').value.trim().toLowerCase();
-    const rows = act.filter((r) => (!resp || r.asignada === resp) && (!sem || r.semaforo === sem) &&
+    const rows = act.filter((r) => (!resp || r.asignada === resp) && (!sem || r.semaforo === sem || (sem === '__sin' && (r.semaforo === 'Sin fecha RFQ' || r.semaforo === 'Sin plazo'))) &&
       (!q || [r.detalle, r.proyecto, r.plaza, r.solped, r.categoria, r.estado].join(' ').toLowerCase().includes(q)))
       .sort((a, b) => (ORD[a.semaforo] - ORD[b.semaforo]) || (Number(a.dias_restantes) - Number(b.dias_restantes)));
     if (!rows.length) empty(tb, 8, 'Ninguna licitación coincide con los filtros.');
@@ -791,6 +804,35 @@ dash.calc('por_categoria', {
   const start = location.hash.slice(1);
   showTab(['activas', 'semana', 'historico', 'buscar'].includes(start) ? start : 'activas');
   dash.onData(draw);
+})();
+</script>
+<script>
+/* Indicadores que filtran: tocar uno muestra en la tabla las licitaciones a las que se refiere */
+(function () {
+  const ACT = { 't-activas': '', 't-vencidas': 'Vencida', 't-porvencer': 'Por vencer', 't-enplazo': 'En plazo', 't-sinfecha': '__sin' };
+  const SEM = { 't-nuevas': 'Nueva', 't-cambios': 'Cambio de estado', 't-cerradas': 'Cerrada' };
+  const marcar = function () {
+    const sem = document.getElementById('f-semaf').value, tipo = document.getElementById('f-tipo').value;
+    Object.keys(ACT).forEach(function (id) { document.getElementById(id).setAttribute('aria-pressed', String(ACT[id] === sem && (id !== 't-activas' || sem === ''))); });
+    Object.keys(SEM).forEach(function (id) { document.getElementById(id).setAttribute('aria-pressed', String(SEM[id] === tipo)); });
+  };
+  const elegir = function (sel, valor, tarjeta) {
+    const s = document.getElementById(sel);
+    s.value = s.value === valor && valor !== '' ? '' : valor;   // tocar de nuevo el mismo indicador quita el filtro
+    s.dispatchEvent(new Event('change'));
+    marcar();
+    document.getElementById(tarjeta).scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  };
+  const preparar = function (id, sel, valor, tarjeta, ayuda) {
+    const t = document.getElementById(id);
+    t.dataset.filtro = valor; t.setAttribute('role', 'button'); t.tabIndex = 0; t.title = ayuda;
+    t.addEventListener('click', function () { elegir(sel, valor, tarjeta); });
+    t.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elegir(sel, valor, tarjeta); } });
+  };
+  Object.keys(ACT).forEach(function (id) { preparar(id, 'f-semaf', ACT[id], 'card-activas', 'Ver estas licitaciones en la tabla'); });
+  Object.keys(SEM).forEach(function (id) { preparar(id, 'f-tipo', SEM[id], 'card-mov', 'Ver estos movimientos en la tabla'); });
+  ['f-semaf', 'f-tipo'].forEach(function (id) { document.getElementById(id).addEventListener('change', marcar); });
+  marcar();
 })();
 </script>
 </body>
