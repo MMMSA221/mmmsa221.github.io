@@ -214,13 +214,14 @@ body{font-family:var(--f-body);font-size:14.5px}
 .pill{border-radius:4px;font-weight:600}
 select,input[type=text],input[type=number]{border-radius:6px}
 footer{border-top:1px solid var(--line)}
+@media (min-width:700px){.chartbox{overflow:hidden}.chartbox svg{max-width:100%}}
 @media (max-width:1000px){.kpi{border-right:0;border-bottom:1px solid var(--line)}}
 </style>
 
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión</span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 26-10 b</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><span class="role" id="role">Visualizador</span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
