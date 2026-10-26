@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Licitaciones · Abastecimiento Estratégico · Grupo ECIPSA</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M6 3h20l3 3v20l-3 3H6l-3-3V6z' fill='%2328283D'/><path d='M6 3h10v13H3V6z' fill='%23FB7520'/></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/sesion.js"></script>
+<script>ECI.exigir('licitaciones');</script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<link rel="stylesheet" href="/eci.css">
+<style>
+/* Variables que el tablero esperaba del entorno de Claude, traducidas al sistema común */
+:root{--color-fg:var(--tinta);--color-fg-muted:var(--suave);--color-bg:var(--fondo);--color-panel:var(--hoja);--color-border-line:var(--linea);
+  --color-bad:#c0392b;--color-warn:#d98a00;--color-ok:#1d7a42;--cds-text-secondary:var(--texto);--cds-border:var(--linea);
+  --cds-chart-grid:var(--linea);--cds-chart-muted:rgba(40,40,61,.28);--cds-surface-popover:var(--hoja);--cds-shadow-popover:0 8px 24px rgba(0,0,0,.14);
+  --cds-radius:6px;--cds-gap-xs:4px;--cds-gap-sm:8px;--cds-gap-md:14px;--cds-gap-lg:24px;--cds-pad-xs:4px;--cds-pad-sm:8px;--cds-pad-md:14px;--cds-pad-lg:20px;--cds-pad-xl:32px;
+  --cds-font-size-caption:13px;--cds-font-size-body:15px;--cds-font-size-heading:22px;--cds-dur-slow:240ms;--font-anthropic-sans:'Open Sans'}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--color-bad:#ff8a80;--color-warn:#f2c15a;--color-ok:#6fd3a0;--cds-chart-muted:rgba(242,242,245,.3)}}
+
+#dash-root { --dash-gutter: 0; }
+.lt {
+  --lt-orange: #FB7520;
+  --lt-navy: #28283D;
+  --lt-head: Gilroy, var(--font-anthropic-sans), Arial, sans-serif;
+  --lt-body: "Open Sans", var(--font-anthropic-sans), Arial, sans-serif;
+  font-family: var(--lt-body);
+  color: var(--color-fg);
+  display: grid;
+  gap: var(--cds-gap-lg);
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-bottom: var(--cds-pad-xl);
+}
+.lt-band { background: var(--lt-navy); color: #fff; border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); }
+.lt-eyebrow { font-family: var(--lt-head); font-size: var(--cds-font-size-caption); letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.85); font-weight: 600; }
+.lt-eyebrow .lt-e { color: var(--lt-orange); }
+.lt-title { font-family: var(--lt-head); font-weight: 700; font-size: clamp(1.6rem, 3vw, 2.25rem); margin: 0; text-wrap: balance; line-height: 1.15; }
+.lt-take { margin: 0; color: rgba(255,255,255,.92); font-size: var(--cds-font-size-body); max-width: 70ch; }
+.lt-take b, .lt b { font-weight: 700; }
+.lt-take .lt-hl { color: #FFB27F; }
+.lt-bar { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); align-items: center; justify-content: space-between; }
+.lt-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: 8px; overflow: hidden; }
+.lt-seg button, .lt-tabs button {
+  font: inherit; font-size: var(--cds-font-size-body); min-height: 40px; padding: 0 var(--cds-pad-md);
+  background: var(--color-panel); color: var(--color-fg); border: 0; cursor: pointer;
+}
+.lt-seg button + button { border-left: 1px solid var(--color-border-line); }
+.lt-seg button[aria-pressed="true"] { background: var(--lt-orange); color: #fff; font-weight: 600; }
+.lt-tabs { display: flex; gap: var(--cds-gap-xs); border-bottom: 1px solid var(--color-border-line); overflow-x: auto; }
+.lt-tabs button { background: transparent; border-bottom: 3px solid transparent; border-radius: 0; color: var(--color-fg-muted); white-space: nowrap; }
+.lt-tabs button[aria-selected="true"] { color: var(--color-fg); border-bottom-color: var(--lt-orange); font-weight: 600; }
+.lt button:focus-visible, .lt select:focus-visible, .lt input:focus-visible { outline: 3px solid var(--lt-orange); outline-offset: 2px; }
+.lt-page { display: grid; gap: var(--cds-gap-lg); }
+.lt-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); gap: var(--cds-gap-md); }
+.lt-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); display: grid; gap: var(--cds-gap-xs); align-content: start; }
+.lt-tile-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.lt-tile-num { font-family: var(--lt-head); font-weight: 700; font-size: 2.1rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.lt-tile-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-height: 1.2em; }
+.lt-tile.is-bad .lt-tile-num { color: var(--color-bad); }
+.lt-tile.is-warn .lt-tile-num { color: var(--color-warn); }
+.lt-up { color: var(--color-bad); } .lt-down { color: var(--color-ok); }
+.lt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+.lt-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-md); align-content: start; min-width: 0; }
+.lt-card h2 { font-family: var(--lt-head); font-size: var(--cds-font-size-heading); font-weight: 700; margin: 0; }
+.lt-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.lt-hbars { display: grid; gap: var(--cds-gap-sm); min-height: 7rem; }
+.lt-hrow { display: grid; grid-template-columns: minmax(7rem, 11rem) 1fr 2.5rem; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-body); }
+.lt-hrow .lt-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-track { height: 14px; background: var(--cds-chart-grid); border-radius: 7px; overflow: hidden; }
+.lt-fill { height: 100%; background: var(--lt-orange); border-radius: 7px; }
+.lt-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.lt-chart { position: relative; min-height: 220px; }
+.lt-chart svg { display: block; overflow: visible; }
+.lt-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 2; }
+.lt-tip .lt-tip-h { color: var(--cds-text-secondary); margin-bottom: 2px; }
+.lt-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.lt-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.lt-tools { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; }
+.lt-field { display: grid; gap: 4px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.lt-field input, .lt-field select { font: inherit; font-size: var(--cds-font-size-body); min-height: 40px; padding: 0 var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: 8px; background: var(--color-bg); color: var(--color-fg); min-width: 12rem; }
+.lt-tablebox { max-height: 34rem; overflow: auto; border: 1px solid var(--color-border-line); border-radius: 8px; }
+.lt-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+.lt-table th { position: sticky; top: 0; background: var(--color-panel); text-align: left; font-size: var(--cds-font-size-caption); text-transform: uppercase; letter-spacing: .04em; color: var(--color-fg-muted); padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; z-index: 1; }
+.lt-table th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-transform: inherit; letter-spacing: inherit; }
+.lt-table td { padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+.lt-table tr:last-child td { border-bottom: 0; }
+.lt-table td.lt-num { text-align: right; white-space: nowrap; }
+.lt-table td.lt-key { white-space: nowrap; color: var(--color-fg-muted); }
+.lt-table td.lt-wide { min-width: 14rem; }
+.lt-sub { display: block; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.lt-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 3px 10px; border-radius: 8px; white-space: nowrap; border: 1px solid currentColor; }
+.lt-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.lt-pill[data-s="Vencida"] { color: var(--color-bad); }
+.lt-pill[data-s="Por vencer"] { color: var(--color-warn); }
+.lt-pill[data-s="En plazo"] { color: var(--color-ok); }
+.lt-pill[data-s="Sin fecha RFQ"], .lt-pill[data-s="Sin plazo"] { color: var(--color-fg-muted); }
+.lt-pill[data-s="Nueva"] { color: var(--lt-orange); }
+.lt-pill[data-s="Cerrada"] { color: var(--color-ok); }
+.lt-pill[data-s="Cambio de estado"] { color: var(--color-fg-muted); }
+.lt-arrow { color: var(--color-fg-muted); padding-inline: 4px; }
+.lt-empty { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); padding: var(--cds-pad-md) 0; }
+.lt-cols { display: flex; align-items: flex-end; gap: var(--cds-gap-sm); height: 200px; padding-top: 1.4rem; }
+.lt-col { flex: 1; display: grid; grid-template-rows: auto 1fr; justify-items: center; height: 100%; min-width: 0; }
+.lt-col-bar { width: min(100%, 44px); background: var(--lt-orange); border-radius: 6px 6px 0 0; align-self: end; }
+.lt-col-val { font-size: var(--cds-font-size-caption); font-weight: 600; font-variant-numeric: tabular-nums; align-self: end; }
+.lt-col-x { display: flex; gap: var(--cds-gap-sm); }
+.lt-col-x span { flex: 1; text-align: center; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; min-width: 0; }
+.lt-col-x span b { display: block; color: var(--color-fg); font-weight: 600; }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+@media (max-width: 560px) {
+  .lt-hrow { grid-template-columns: minmax(5.5rem, 8rem) 1fr 2.2rem; }
+  .lt-hide-sm { display: none; }
+  .lt-field input, .lt-field select { min-width: 0; width: 100%; }
+  .lt-tools { display: grid; grid-template-columns: 1fr; }
+}
+
+/* Ajustes al sistema visual común */
+.hoja-lic{max-width:1180px;margin:0 auto;padding:36px 24px 48px}
+.lt-band{background:none!important;color:var(--tinta)!important;padding:0 0 6px!important;border-radius:0!important}
+.lt-title{font-family:var(--tit)!important;font-weight:800!important;font-size:clamp(34px,4.6vw,52px)!important;letter-spacing:-.02em;color:var(--tinta)!important}
+.lt-take{color:var(--texto)!important;font-size:16px!important}
+.lt-take .lt-hl{color:var(--naranja-osc)!important}
+.lt-card{box-shadow:none!important;border:1px solid var(--linea)!important;border-radius:6px!important;background:var(--hoja)!important}
+.lt-card h2{font-family:var(--tit);font-weight:700;letter-spacing:-.01em}
+.lt-tiles{gap:0!important;border-top:2px solid var(--tinta);border-bottom:1px solid var(--linea)}
+.lt-tile{background:none!important;box-shadow:none!important;border:0!important;border-right:1px solid var(--linea)!important;border-radius:0!important}
+.lt-tile:last-child{border-right:0!important}
+.lt-tile-label{text-transform:none!important;letter-spacing:0!important;font-weight:600}
+.lt-tile-num{font-family:var(--tit);font-weight:800}
+.lt-tile.is-bad{box-shadow:inset 0 3px 0 var(--color-bad)!important}
+.lt-tile.is-warn{box-shadow:inset 0 3px 0 var(--color-warn)!important}
+.lt-track{height:8px!important;border-radius:2px!important}
+.lt-fill{border-radius:2px!important}
+.lt-table th{text-transform:none!important;letter-spacing:0!important}
+.datos{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--suave);margin:6px 0 18px}
+.datos label.eci-btn{display:inline-flex;align-items:center;min-height:36px;font-size:13px;cursor:pointer}
+.datos input{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<header class="eci-barra">
+  <div class="eci-barra-in">
+    <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Licitaciones de Abastecimiento Estratégico</span>
+    <div class="eci-usuario"><span class="nombre" id="uNom"></span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
+  </div>
+</header>
+<main class="hoja-lic">
+  <div class="datos" id="datos"><span id="datosInfo">Cargando el último informe…</span>
+    <label class="eci-btn" id="datosBtn" hidden>Actualizar datos<input type="file" id="datosIn" accept=".csv" multiple></label>
+  </div>
+  <div id="dash-root">
+
+
+<div class="lt" id="tablero">
+  <header class="lt-band" id="encabezado">
+        <h1 class="lt-title">Licitaciones</h1>
+    <p class="lt-take">Informe del <b class="lt-hl" data-source="resumen" data-field="semana" id="tk-semana">—</b>:
+      <b data-source="resumen" data-field="activas" id="tk-activas">—</b> licitaciones en gestión,
+      <b class="lt-hl" data-source="resumen" data-field="vencidas" id="tk-vencidas">—</b> fuera de plazo y
+      <b data-source="resumen" data-field="por_vencer" id="tk-porvencer">—</b> vencen en los próximos 7 días.</p>
+  </header>
+
+  <div class="lt-bar">
+    <div class="lt-seg" role="group" aria-label="País" id="f-pais">
+      <button type="button" data-v="Todos">Todos</button>
+      <button type="button" data-v="ARG">Argentina</button>
+      <button type="button" data-v="PY">Paraguay</button>
+    </div>
+    <span class="lt-note">Fuente: informe semanal de Estados de Procesos Licitatorios (hojas ARG y PY).</span>
+  </div>
+
+  <nav class="lt-tabs" role="tablist" aria-label="Secciones">
+    <button type="button" role="tab" data-tab="activas" id="tab-activas">Activas</button>
+    <button type="button" role="tab" data-tab="semana" id="tab-semana">Semana a semana</button>
+    <button type="button" role="tab" data-tab="historico" id="tab-historico">Histórico</button>
+    <button type="button" role="tab" data-tab="buscar" id="tab-buscar">Buscar proceso</button>
+  </nav>
+
+  <!-- ACTIVAS -->
+  <section class="lt-page" id="activas" role="tabpanel" aria-labelledby="tab-activas">
+    <div class="lt-tiles">
+      <div class="lt-tile" id="t-activas"><span class="lt-tile-label">En gestión</span><span class="lt-tile-num" data-source="resumen" data-field="activas">—</span><span class="lt-tile-sub" data-source="resumen" data-field="delta_activas">—</span></div>
+      <div class="lt-tile is-bad" id="t-vencidas"><span class="lt-tile-label">Fuera de plazo</span><span class="lt-tile-num" data-source="resumen" data-field="vencidas">—</span><span class="lt-tile-sub" data-source="resumen" data-field="delta_vencidas">—</span></div>
+      <div class="lt-tile is-warn" id="t-porvencer"><span class="lt-tile-label">Vencen en ≤ 7 días</span><span class="lt-tile-num" data-source="resumen" data-field="por_vencer">—</span><span class="lt-tile-sub">Atender esta semana</span></div>
+      <div class="lt-tile" id="t-enplazo"><span class="lt-tile-label">En plazo</span><span class="lt-tile-num" data-source="resumen" data-field="en_plazo">—</span><span class="lt-tile-sub">Más de 7 días de margen</span></div>
+      <div class="lt-tile" id="t-sinfecha"><span class="lt-tile-label">Sin fecha RFQ</span><span class="lt-tile-num" data-source="resumen" data-field="sin_fecha">—</span><span class="lt-tile-sub">No se puede medir el plazo</span></div>
+    </div>
+
+    <div class="lt-grid">
+      <div class="lt-card" id="card-etapas">
+        <h2>¿En qué etapa están?</h2>
+        <p class="lt-note">Licitaciones en gestión agrupadas por etapa del proceso.</p>
+        <div class="lt-hbars" id="ch-etapas" data-source="por_etapa"></div>
+      </div>
+      <div class="lt-card" id="card-resp">
+        <h2>¿Quién tiene la pelota?</h2>
+        <p class="lt-note">Área que tiene que mover el estado actual (según el paréntesis del estado).</p>
+        <div class="lt-hbars" id="ch-resp" data-source="por_responsable"></div>
+      </div>
+    </div>
+
+    <div class="lt-card" id="card-activas">
+      <h2>Licitaciones en gestión</h2>
+      <p class="lt-note">Días restantes = días de licitación y adjudicación de la categoría menos los días desde la recepción de RFQ (o el relanzamiento) hasta la fecha del informe. Ordenadas de la más atrasada a la más holgada.</p>
+      <div class="lt-tools">
+        <label class="lt-field" for="f-resp">Asignada a
+          <select id="f-resp"></select>
+        </label>
+        <label class="lt-field" for="f-semaf">Situación
+          <select id="f-semaf">
+            <option value="">Todas</option>
+            <option>Vencida</option><option>Por vencer</option><option>En plazo</option><option>Sin fecha RFQ</option><option>Sin plazo</option>
+          </select>
+        </label>
+        <label class="lt-field" for="f-q-act">Buscar
+          <input id="f-q-act" type="search" placeholder="Detalle, proyecto, plaza…">
+        </label>
+      </div>
+      <div class="lt-tablebox">
+        <table class="lt-table" id="tb-activas" data-source="procesos" data-row-key="clave">
+          <thead><tr>
+            <th data-field="clave">#</th>
+            <th data-field="detalle">Detalle</th>
+            <th data-field="proyecto" class="lt-hide-sm">Proyecto</th>
+            <th data-field="asignada">Asig.</th>
+            <th data-field="estado">Estado</th>
+            <th data-field="fecha_rfq" class="lt-hide-sm">RFQ</th>
+            <th data-field="dias_restantes">Días rest.</th>
+            <th data-field="semaforo">Situación</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="lt-note" id="cnt-activas"></p>
+    </div>
+  </section>
+
+  <!-- SEMANA -->
+  <section class="lt-page" id="semana" role="tabpanel" aria-labelledby="tab-semana" hidden>
+    <div class="lt-tiles">
+      <div class="lt-tile" id="t-nuevas"><span class="lt-tile-label">Nuevas</span><span class="lt-tile-num" data-source="resumen" data-field="nuevas">—</span><span class="lt-tile-sub">Filas agregadas al informe</span></div>
+      <div class="lt-tile" id="t-cambios"><span class="lt-tile-label">Cambiaron de estado</span><span class="lt-tile-num" data-source="resumen" data-field="cambios_estado">—</span><span class="lt-tile-sub">Siguen en gestión</span></div>
+      <div class="lt-tile" id="t-cerradas"><span class="lt-tile-label">Cerradas</span><span class="lt-tile-num" data-source="resumen" data-field="cerradas_semana">—</span><span class="lt-tile-sub">Contratadas, con OC enviada o finalizadas</span></div>
+    </div>
+
+    <div class="lt-card" id="card-evol">
+      <h2>Evolución semanal</h2>
+      <p class="lt-note">Licitaciones en gestión en cada informe, por situación de plazo.</p>
+      <div class="lt-legend" id="lg-evol"></div>
+      <div class="lt-chart" id="ch-evol" data-source="semanas"></div>
+    </div>
+
+    <div class="lt-card" id="card-mov">
+      <h2>Qué cambió</h2>
+      <p class="lt-note">Comparación de cada informe contra el del viernes anterior.</p>
+      <div class="lt-tools">
+        <label class="lt-field" for="f-sem">Informe
+          <select id="f-sem"></select>
+        </label>
+        <label class="lt-field" for="f-tipo">Tipo
+          <select id="f-tipo"><option value="">Todos</option><option>Nueva</option><option>Cambio de estado</option><option>Cerrada</option></select>
+        </label>
+      </div>
+      <div class="lt-tablebox">
+        <table class="lt-table" id="tb-mov" data-source="movimientos" data-row-key="semana,clave">
+          <thead><tr>
+            <th data-field="clave">#</th>
+            <th data-field="tipo">Tipo</th>
+            <th data-field="detalle">Detalle</th>
+            <th data-field="proyecto" class="lt-hide-sm">Proyecto</th>
+            <th data-field="estado_anterior" class="lt-hide-sm">Estado anterior</th>
+            <th data-field="estado_nuevo">Estado nuevo</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORICO -->
+  <section class="lt-page" id="historico" role="tabpanel" aria-labelledby="tab-historico" hidden>
+    <div class="lt-card" id="card-anio">
+      <h2>Adjudicaciones por año</h2>
+      <p class="lt-note">Procesos contratados, con OC enviada o finalizados, según la fecha de adjudicación / elaboración de OC. Debajo, el porcentaje que cerró dentro del plazo de su categoría.</p>
+      <div id="ch-anio" data-source="por_anio">
+        <div class="lt-cols"></div>
+        <div class="lt-col-x"></div>
+      </div>
+    </div>
+    <div class="lt-card" id="card-cat">
+      <h2>Tiempos por categoría (desde 2024)</h2>
+      <p class="lt-note">Días de gestión de compras promedio contra el plazo objetivo. Solo procesos cerrados con días de gestión cargados.</p>
+      <div class="lt-tablebox">
+        <table class="lt-table" id="tb-cat" data-source="por_categoria" data-row-key="pais,categoria">
+          <thead><tr>
+            <th data-field="categoria">Categoría</th>
+            <th data-field="procesos">Procesos</th>
+            <th data-field="dias_promedio">Días prom.</th>
+            <th data-field="plazo_objetivo">Plazo</th>
+            <th data-field="pct_en_plazo">En plazo</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUSCAR -->
+  <section class="lt-page" id="buscar" role="tabpanel" aria-labelledby="tab-buscar" hidden>
+    <div class="lt-card" id="card-buscar">
+      <h2>Buscar cualquier proceso</h2>
+      <p class="lt-note">Todos los procesos del último informe, incluidos los cerrados y suspendidos.</p>
+      <div class="lt-tools">
+        <label class="lt-field" for="f-q">Buscar
+          <input id="f-q" type="search" placeholder="SOLPED, OC, proveedor, detalle, proyecto…">
+        </label>
+        <label class="lt-field" for="f-est">Estado
+          <select id="f-est"></select>
+        </label>
+      </div>
+      <div class="lt-tablebox">
+        <table class="lt-table" id="tb-all" data-source="procesos" data-row-key="clave">
+          <thead><tr>
+            <th data-field="clave">#</th>
+            <th data-field="detalle">Detalle</th>
+            <th data-field="proyecto" class="lt-hide-sm">Proyecto</th>
+            <th data-field="asignada">Asig.</th>
+            <th data-field="estado">Estado</th>
+            <th data-field="proveedor" class="lt-hide-sm">Proveedor</th>
+            <th data-field="fecha_adjudicacion" class="lt-hide-sm">Adjudicación</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="lt-note" id="cnt-all"></p>
+    </div>
+  </section>
+</div>
+
+
+  </div>
+</main>
+<script>
+/* ═══ Reemplazo del entorno de tableros de Claude ═══
+   Datos: tabla public.docs (app "licitaciones", colección "datos"): procesos, movimientos y evolucion, guardados como CSV.
+   Cálculos: los mismos de la versión anterior (dash.calc), resueltos acá en el navegador. */
+(function () {
+  const APP = 'licitaciones', FUENTES = ['procesos', 'movimientos', 'evolucion'];
+  const RAW = {}, CALC = {}, CACHE = {}, SUBS = []; let estado = 'loading', PARAMS = {};
+  try { const q = new URLSearchParams(location.search); if (q.get('pais')) PARAMS.pais = q.get('pais'); } catch (e) { }
+  const api = async function (path, o) {
+    o = o || {}; const h = Object.assign(await ECI.headers(), { 'Content-Type': 'application/json' }); if (o.prefer) h.Prefer = o.prefer;
+    const r = await fetch(ECI.SB_URL + '/rest/v1/' + path, { method: o.method || 'GET', headers: h, body: o.body ? JSON.stringify(o.body) : undefined });
+    if (!r.ok) { let m = ''; try { m = (await r.json()).message; } catch (e) { } throw new Error(m || 'Error ' + r.status); }
+    return r.status === 204 ? null : r.json().catch(function () { return null; });
+  };
+  const avisar = function () { SUBS.forEach(function (f) { try { f(); } catch (e) { console.error(e); } }); };
+  window.dash = {
+    calc: function (n, def) { CALC[n] = def; },
+    data: function (n) {
+      if (estado !== 'ok') return { status: estado };
+      if (RAW[n]) return { status: 'ok', data: RAW[n] };
+      const c = CALC[n]; if (!c) return { status: 'error' };
+      if (!(n in CACHE)) CACHE[n] = c.fn.apply(null, c.inputs.map(function (i) { return dash.data(i).data || []; }));
+      return { status: 'ok', data: CACHE[n] };
+    },
+    params: function () { return PARAMS; },
+    setParams: function (p) { PARAMS = Object.assign({}, PARAMS, p); const q = new URLSearchParams(PARAMS); try { history.replaceState(null, '', '?' + q + location.hash); } catch (e) { } avisar(); },
+    setLink: function (id) { try { history.replaceState(null, '', location.pathname + location.search + '#' + id); } catch (e) { } },
+    onData: function (f) { SUBS.push(f); if (estado === 'ok') f(); }
+  };
+  async function cargar() {
+    const x = await ECI.listo; document.getElementById('uNom').textContent = x.usuario.nombre;
+    if (x.usuario.rol === 'admin') document.getElementById('datosBtn').hidden = false;
+    try {
+      const filas = await api('docs?app=eq.' + APP + '&coleccion=eq.datos&select=id,data,actualizado,actualizado_por') || [];
+      Object.keys(CACHE).forEach(function (k) { delete CACHE[k]; });
+      filas.forEach(function (f) { if (FUENTES.indexOf(f.id) >= 0) RAW[f.id] = d3.csvParse(f.data.csv || ''); });
+      const falta = FUENTES.filter(function (k) { return !RAW[k]; });
+      const ult = filas.map(function (f) { return f.actualizado; }).sort().pop();
+      const quien = (filas.find(function (f) { return f.actualizado === ult; }) || {}).actualizado_por;
+      document.getElementById('datosInfo').textContent = falta.length
+        ? 'Faltan datos: ' + falta.join(', ') + '. Un administrador tiene que cargarlos con “Actualizar datos”.'
+        : 'Datos actualizados el ' + new Date(ult).toLocaleString('es-AR') + (quien ? ' por ' + quien : '') + '.';
+      estado = falta.length ? 'error' : 'ok';
+    } catch (e) { estado = 'error'; document.getElementById('datosInfo').textContent = 'No se pudieron leer los datos: ' + e.message; }
+    avisar();
+  }
+  document.getElementById('datosIn').addEventListener('change', async function (e) {
+    const files = Array.from(e.target.files || []); e.target.value = '';
+    const info = document.getElementById('datosInfo');
+    try {
+      let n = 0;
+      for (const f of files) {
+        const id = f.name.toLowerCase().replace(/\.csv$/, '');
+        if (FUENTES.indexOf(id) < 0) { info.textContent = 'El archivo ' + f.name + ' no se reconoce: tiene que llamarse procesos.csv, movimientos.csv o evolucion.csv.'; return; }
+        const txt = await f.text(); d3.csvParse(txt);
+        await api('docs?on_conflict=app,coleccion,id', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: { app: APP, coleccion: 'datos', id: id, data: { csv: txt, archivo: f.name } } });
+        n++;
+      }
+      info.textContent = n + ' archivo' + (n === 1 ? '' : 's') + ' cargado' + (n === 1 ? '' : 's') + '. Actualizando…';
+      cargar();
+    } catch (err) { info.textContent = 'No se pudo cargar: ' + err.message; }
+  });
+  cargar();
+})();
+</script>
+<script>
+/* ---------- Cálculos (visibles en Fuentes) ---------- */
+dash.calc('semanas', {
+  inputs: ['evolucion'],
+  title: 'Situación por semana',
+  description: 'Resumen de cada informe por país, más la suma de ambos países como "Todos".',
+  fn: (evolucion) => {
+    const nums = ['activas', 'en_plazo', 'por_vencer', 'vencidas', 'sin_fecha', 'nuevas', 'cambios_estado', 'cerradas_semana', 'total_procesos'];
+    const rows = evolucion.map((r) => { const o = { semana: r.semana, pais: r.pais }; nums.forEach((k) => { o[k] = Number(r[k]) || 0; }); return o; });
+    const tot = {};
+    rows.forEach((r) => { const t = tot[r.semana] || (tot[r.semana] = { semana: r.semana, pais: 'Todos' }); nums.forEach((k) => { t[k] = (t[k] || 0) + r[k]; }); });
+    return rows.concat(Object.values(tot)).sort((a, b) => a.semana.localeCompare(b.semana) || a.pais.localeCompare(b.pais));
+  },
+});
+
+dash.calc('resumen', {
+  inputs: ['semanas'],
+  title: 'Resumen del último informe',
+  description: 'Último informe de cada país y la diferencia contra el informe anterior.',
+  fn: (semanas) => ['Todos', 'ARG', 'PY'].map((pais) => {
+    const s = semanas.filter((r) => r.pais === pais).sort((a, b) => a.semana.localeCompare(b.semana));
+    const u = s[s.length - 1] || {}; const p = s[s.length - 2];
+    return { ...u, pais, semana_anterior: p ? p.semana : '',
+      delta_activas: p ? u.activas - p.activas : '', delta_vencidas: p ? u.vencidas - p.vencidas : '' };
+  }),
+});
+
+dash.calc('por_etapa', {
+  inputs: ['procesos'],
+  title: 'Activas por etapa',
+  description: 'Cantidad de licitaciones en gestión por etapa del proceso, por país y en total.',
+  fn: (procesos) => {
+    const out = {};
+    procesos.filter((r) => r.activa === 'si').forEach((r) => {
+      [r.pais, 'Todos'].forEach((pais) => { const k = pais + '|' + r.etapa; (out[k] = out[k] || { pais, etapa: r.etapa, cantidad: 0 }).cantidad += 1; });
+    });
+    return Object.values(out).sort((a, b) => a.etapa.localeCompare(b.etapa));
+  },
+});
+
+dash.calc('por_responsable', {
+  inputs: ['procesos'],
+  title: 'Activas por área responsable',
+  description: 'Cantidad de licitaciones en gestión según el área indicada en el estado, por país y en total.',
+  fn: (procesos) => {
+    const out = {};
+    procesos.filter((r) => r.activa === 'si').forEach((r) => {
+      [r.pais, 'Todos'].forEach((pais) => { const k = pais + '|' + r.responsable_etapa; (out[k] = out[k] || { pais, responsable: r.responsable_etapa, cantidad: 0 }).cantidad += 1; });
+    });
+    return Object.values(out).sort((a, b) => b.cantidad - a.cantidad);
+  },
+});
+
+dash.calc('por_anio', {
+  inputs: ['procesos'],
+  title: 'Adjudicaciones por año',
+  description: 'Procesos cerrados (sin suspendidos) por año de adjudicación, con el % cerrado dentro del plazo de su categoría.',
+  fn: (procesos) => {
+    const out = {};
+    procesos.filter((r) => r.activa === 'no' && r.anio_adjudicacion && !String(r.estado).startsWith('10')).forEach((r) => {
+      [r.pais, 'Todos'].forEach((pais) => {
+        const k = pais + '|' + r.anio_adjudicacion;
+        const o = out[k] || (out[k] = { pais, anio: String(r.anio_adjudicacion), adjudicadas: 0, medidas: 0, en_plazo: 0 });
+        o.adjudicadas += 1;
+        if (r.cumplio_plazo) { o.medidas += 1; if (r.cumplio_plazo === 'si') o.en_plazo += 1; }
+      });
+    });
+    return Object.values(out).map((o) => ({ ...o, pct_en_plazo: o.medidas ? o.en_plazo / o.medidas : null }))
+      .sort((a, b) => a.anio.localeCompare(b.anio));
+  },
+});
+
+dash.calc('por_categoria', {
+  inputs: ['procesos'],
+  title: 'Tiempos por categoría',
+  description: 'Desde 2024: días de gestión promedio, plazo objetivo promedio y % en plazo por categoría.',
+  fn: (procesos) => {
+    const out = {};
+    procesos.filter((r) => r.activa === 'no' && r.cumplio_plazo && Number(r.anio_adjudicacion) >= 2024).forEach((r) => {
+      [r.pais, 'Todos'].forEach((pais) => {
+        const k = pais + '|' + r.categoria;
+        const o = out[k] || (out[k] = { pais, categoria: r.categoria, procesos: 0, suma_dias: 0, suma_plazo: 0, en_plazo: 0 });
+        o.procesos += 1; o.suma_dias += Number(r.dias_gestion); o.suma_plazo += Number(r.plazo_dias);
+        if (r.cumplio_plazo === 'si') o.en_plazo += 1;
+      });
+    });
+    return Object.values(out).map((o) => ({ pais: o.pais, categoria: o.categoria, procesos: o.procesos,
+      dias_promedio: Math.round(o.suma_dias / o.procesos), plazo_objetivo: Math.round(o.suma_plazo / o.procesos),
+      pct_en_plazo: o.en_plazo / o.procesos })).sort((a, b) => b.procesos - a.procesos);
+  },
+});
+
+/* ---------- Página ---------- */
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const fmtFecha = (s) => (s && s.length >= 10 ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) : '—');
+  const fmtPct = d3.format('.0%');
+  const pais = () => dash.params().pais || 'Todos';
+  const enPais = (r) => pais() === 'Todos' || r.pais === pais();
+  const enc = encodeURIComponent;
+  let tab = 'activas';
+
+  const td = (tr, text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.appendChild(c); return c; };
+  const pill = (cell, s) => { cell.textContent = ''; const p = document.createElement('span'); p.className = 'lt-pill'; p.dataset.s = s; p.textContent = s; cell.appendChild(p); };
+  const empty = (tbody, cols, msg) => { const tr = document.createElement('tr'); const c = td(tr, msg, 'lt-empty'); c.colSpan = cols; tbody.appendChild(tr); };
+  const setOptions = (sel, values, allLabel) => {
+    const cur = sel.value;
+    sel.replaceChildren(new Option(allLabel, ''), ...values.map((v) => new Option(v, v)));
+    sel.value = values.includes(cur) ? cur : '';
+  };
+
+  /* filtros */
+  $('#f-pais').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (b) dash.setParams({ pais: b.dataset.v }); });
+  ['#f-resp', '#f-semaf', '#f-sem', '#f-tipo', '#f-est'].forEach((s) => $(s).addEventListener('change', draw));
+  ['#f-q-act', '#f-q'].forEach((s) => $(s).addEventListener('input', draw));
+
+  /* pestañas */
+  const showTab = (id) => {
+    tab = id;
+    document.querySelectorAll('.lt-tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
+    document.querySelectorAll('.lt-page').forEach((p) => { p.hidden = p.id !== id; });
+    dash.setLink(id); draw();
+  };
+  $('.lt-tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
+
+  /* barras horizontales */
+  const hbars = (el, src, labelKey, order) => {
+    el.replaceChildren();
+    const d = dash.data(src);
+    if (d.status !== 'ok') { el.classList.toggle('dash-skeleton', d.status === 'loading'); return; }
+    el.classList.remove('dash-skeleton');
+    let rows = d.data.filter((r) => r.pais === pais());
+    if (order) rows = rows.sort((a, b) => a[labelKey].localeCompare(b[labelKey]));
+    if (!rows.length) { const p = document.createElement('div'); p.className = 'lt-empty'; p.textContent = 'No hay licitaciones en gestión para este país.'; el.appendChild(p); return; }
+    const max = d3.max(rows, (r) => r.cantidad) || 1;
+    rows.forEach((r) => {
+      const row = document.createElement('div'); row.className = 'lt-hrow';
+      const l = document.createElement('span'); l.className = 'lt-lbl'; l.textContent = r[labelKey] || '—'; l.title = r[labelKey];
+      const t = document.createElement('div'); t.className = 'lt-track';
+      const f = document.createElement('div'); f.className = 'lt-fill'; f.style.width = (r.cantidad / max * 100) + '%'; t.appendChild(f);
+      const v = document.createElement('span'); v.className = 'lt-val'; v.textContent = r.cantidad;
+      v.dataset.source = src; v.dataset.field = 'cantidad'; v.dataset.where = 'pais=' + enc(r.pais) + '&' + labelKey + '=' + enc(r[labelKey]);
+      row.append(l, t, v); el.appendChild(row);
+    });
+  };
+
+  /* evolución semanal (barras apiladas) */
+  const SERIES = [
+    { k: 'vencidas', n: 'Fuera de plazo', c: 'var(--color-bad)' },
+    { k: 'por_vencer', n: 'Vencen en ≤ 7 días', c: 'var(--color-warn)' },
+    { k: 'en_plazo', n: 'En plazo', c: 'var(--color-ok)' },
+    { k: 'sin_fecha', n: 'Sin fecha / sin plazo', c: 'var(--cds-chart-muted)' },
+  ];
+  const lg = $('#lg-evol');
+  SERIES.forEach((s) => { const x = document.createElement('span'); const sw = document.createElement('span'); sw.className = 'lt-sw'; sw.style.background = s.c; x.append(sw, document.createTextNode(s.n)); lg.appendChild(x); });
+
+  const drawEvol = () => {
+    const el = $('#ch-evol'); el.replaceChildren();
+    const d = dash.data('semanas');
+    if (d.status !== 'ok') { el.classList.toggle('dash-skeleton', d.status === 'loading'); return; }
+    el.classList.remove('dash-skeleton');
+    const rows = d.data.filter((r) => r.pais === pais());
+    const W = Math.max(280, el.clientWidth), H = 220, m = { t: 22, r: 8, b: 26, l: 30 };
+    const x = d3.scaleBand(rows.map((r) => r.semana), [m.l, W - m.r]).padding(0.5);
+    const bw = Math.min(36, x.bandwidth()), xo = (k) => x(k) + (x.bandwidth() - bw) / 2;  // barras finas aunque haya pocas semanas
+    const ymax = d3.max(rows, (r) => r.activas) || 1;
+    const y = d3.scaleLinear([0, ymax], [H - m.b, m.t]).nice();
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const ticks = y.ticks(4).filter(Number.isInteger);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y).attr('y2', y).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', m.l - 6).attr('y', (t) => y(t) + 4).attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)').attr('font-size', 11).text((t) => t);
+    const tip = document.createElement('div'); tip.className = 'lt-tip'; tip.hidden = true; el.appendChild(tip);
+    rows.forEach((r) => {
+      let acc = 0;
+      const g = svg.append('g').style('cursor', 'default');
+      SERIES.forEach((s) => {
+        const v = r[s.k]; if (!v) return;
+        g.append('rect').attr('x', xo(r.semana)).attr('width', bw).attr('y', y(acc + v)).attr('height', y(acc) - y(acc + v)).attr('fill', s.c).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1);
+        acc += v;
+      });
+      g.append('text').attr('x', x(r.semana) + x.bandwidth() / 2).attr('y', y(acc) - 6).attr('text-anchor', 'middle').attr('font-size', 12).attr('font-weight', 700).attr('fill', 'var(--color-fg)')
+        .attr('data-source', 'semanas').attr('data-field', 'activas').attr('data-where', `semana=${enc(r.semana)}&pais=${enc(r.pais)}`).text(r.activas);
+      svg.append('text').attr('x', x(r.semana) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(fmtFecha(r.semana).slice(0, 5));
+      g.append('rect').attr('x', x(r.semana) - x.step() * x.paddingInner() / 2).attr('width', x.step()).attr('y', m.t).attr('height', H - m.t - m.b).attr('fill', 'transparent')
+        .on('mousemove', (ev) => {
+          tip.replaceChildren();
+          const h = document.createElement('div'); h.className = 'lt-tip-h'; h.textContent = 'Informe ' + fmtFecha(r.semana); tip.appendChild(h);
+          SERIES.forEach((s) => { const l = document.createElement('div'); const sw = document.createElement('span'); sw.className = 'lt-sw'; sw.style.background = s.c; l.append(sw, document.createTextNode(s.n + ': ' + r[s.k])); tip.appendChild(l); });
+          const l2 = document.createElement('div'); l2.textContent = `Nuevas ${r.nuevas} · Cambios ${r.cambios_estado} · Cerradas ${r.cerradas_semana}`; tip.appendChild(l2);
+          tip.hidden = false;
+          const [px, py] = d3.pointer(ev, el);
+          tip.style.left = Math.min(Math.max(0, px + 12), el.clientWidth - tip.offsetWidth) + 'px';
+          tip.style.top = Math.max(0, py - tip.offsetHeight - 8) + 'px';
+        })
+        .on('mouseleave', () => { tip.hidden = true; });
+    });
+  };
+
+  /* adjudicaciones por año */
+  const drawAnio = () => {
+    const box = $('#ch-anio'), cols = $('.lt-cols', box), xs = $('.lt-col-x', box);
+    cols.replaceChildren(); xs.replaceChildren();
+    const d = dash.data('por_anio');
+    if (d.status !== 'ok') { box.classList.toggle('dash-skeleton', d.status === 'loading'); return; }
+    box.classList.remove('dash-skeleton');
+    const rows = d.data.filter((r) => r.pais === pais());
+    const max = d3.max(rows, (r) => r.adjudicadas) || 1;
+    rows.forEach((r) => {
+      const where = `pais=${enc(r.pais)}&anio=${enc(r.anio)}`;
+      const c = document.createElement('div'); c.className = 'lt-col';
+      const v = document.createElement('span'); v.className = 'lt-col-val'; v.textContent = d3.format(',')(r.adjudicadas).replace(/,/g, '.');
+      v.dataset.source = 'por_anio'; v.dataset.field = 'adjudicadas'; v.dataset.where = where;
+      const b = document.createElement('div'); b.className = 'lt-col-bar'; b.style.height = (r.adjudicadas / max * 100) + '%';
+      c.append(v, b); cols.appendChild(c);
+      const x = document.createElement('span'); const y = document.createElement('b'); y.textContent = r.anio;
+      const p = document.createElement('span'); p.textContent = r.pct_en_plazo == null ? '—' : fmtPct(r.pct_en_plazo);
+      p.dataset.source = 'por_anio'; p.dataset.field = 'pct_en_plazo'; p.dataset.where = where; p.style.display = 'block';
+      x.append(y, p); xs.appendChild(x);
+    });
+  };
+
+  /* tabla de activas */
+  const ORD = { 'Vencida': 0, 'Por vencer': 1, 'En plazo': 2, 'Sin plazo': 3, 'Sin fecha RFQ': 4 };
+  const drawActivas = () => {
+    const tb = $('#tb-activas tbody'); tb.replaceChildren();
+    const d = dash.data('procesos'); if (d.status !== 'ok') return;
+    const act = d.data.filter((r) => r.activa === 'si' && enPais(r));
+    setOptions($('#f-resp'), [...new Set(act.map((r) => r.asignada))].sort(), 'Todas las personas');
+    const resp = $('#f-resp').value, sem = $('#f-semaf').value, q = $('#f-q-act').value.trim().toLowerCase();
+    const rows = act.filter((r) => (!resp || r.asignada === resp) && (!sem || r.semaforo === sem) &&
+      (!q || [r.detalle, r.proyecto, r.plaza, r.solped, r.categoria, r.estado].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => (ORD[a.semaforo] - ORD[b.semaforo]) || (Number(a.dias_restantes) - Number(b.dias_restantes)));
+    if (!rows.length) empty(tb, 8, 'Ninguna licitación coincide con los filtros.');
+    rows.forEach((r) => {
+      const tr = document.createElement('tr');
+      td(tr, r.clave, 'lt-key');
+      td(tr, r.detalle, 'lt-wide');
+      td(tr, r.proyecto, 'lt-hide-sm');
+      td(tr, r.asignada);
+      td(tr, r.estado);
+      td(tr, fmtFecha(r.fecha_rfq), 'lt-num lt-hide-sm');
+      td(tr, r.dias_restantes === '' ? '—' : r.dias_restantes, 'lt-num');
+      pill(td(tr, ''), r.semaforo);
+      tb.appendChild(tr);
+    });
+    $('#cnt-activas').textContent = `${rows.length} de ${act.length} licitaciones en gestión.`;
+  };
+
+  /* movimientos */
+  const drawMov = () => {
+    const tb = $('#tb-mov tbody'); tb.replaceChildren();
+    const d = dash.data('movimientos'); if (d.status !== 'ok') return;
+    const sems = [...new Set(d.data.map((r) => r.semana))].sort().reverse();
+    const sel = $('#f-sem'); const cur = sel.value;
+    sel.replaceChildren(...sems.map((s) => new Option('Viernes ' + fmtFecha(s), s)));
+    sel.value = sems.includes(cur) ? cur : (sems[0] || '');
+    const tipo = $('#f-tipo').value;
+    const rows = d.data.filter((r) => r.semana === sel.value && enPais(r) && (!tipo || r.tipo === tipo));
+    if (!rows.length) empty(tb, 6, sems.length ? 'Sin movimientos para este filtro.' : 'Hace falta al menos dos informes para comparar.');
+    rows.forEach((r) => {
+      const tr = document.createElement('tr'); tr.dataset.key = enc(r.semana) + ',' + enc(r.clave);
+      td(tr, r.clave, 'lt-key'); pill(td(tr, ''), r.tipo);
+      td(tr, r.detalle, 'lt-wide'); td(tr, r.proyecto, 'lt-hide-sm');
+      td(tr, r.estado_anterior || '—', 'lt-hide-sm'); td(tr, r.estado_nuevo);
+      tb.appendChild(tr);
+    });
+  };
+
+  /* categorías */
+  const drawCat = () => {
+    const tb = $('#tb-cat tbody'); tb.replaceChildren();
+    const d = dash.data('por_categoria'); if (d.status !== 'ok') return;
+    const rows = d.data.filter((r) => r.pais === pais());
+    if (!rows.length) empty(tb, 5, 'Sin procesos medibles para este país.');
+    rows.forEach((r) => {
+      const tr = document.createElement('tr'); tr.dataset.key = enc(r.pais) + ',' + enc(r.categoria);
+      td(tr, r.categoria); td(tr, r.procesos, 'lt-num');
+      const dc = td(tr, r.dias_promedio, 'lt-num'); if (r.dias_promedio > r.plazo_objetivo) dc.style.color = 'var(--color-bad)';
+      td(tr, r.plazo_objetivo, 'lt-num'); td(tr, fmtPct(r.pct_en_plazo), 'lt-num');
+      tb.appendChild(tr);
+    });
+  };
+
+  /* buscador */
+  const drawAll = () => {
+    const tb = $('#tb-all tbody'); tb.replaceChildren();
+    const d = dash.data('procesos'); if (d.status !== 'ok') return;
+    const base = d.data.filter(enPais);
+    setOptions($('#f-est'), [...new Set(base.map((r) => r.estado).filter(Boolean))].sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0)), 'Todos los estados');
+    const q = $('#f-q').value.trim().toLowerCase(), est = $('#f-est').value;
+    const rows = base.filter((r) => (!est || r.estado === est) &&
+      (!q || [r.clave, r.solped, r.oc, r.detalle, r.proyecto, r.plaza, r.proveedor, r.categoria, r.asignada].join(' ').toLowerCase().includes(q)))
+      .slice().reverse();
+    const shown = rows.slice(0, 400);
+    if (!shown.length) empty(tb, 7, 'Ningún proceso coincide con la búsqueda.');
+    shown.forEach((r) => {
+      const tr = document.createElement('tr');
+      td(tr, r.clave, 'lt-key'); td(tr, r.detalle, 'lt-wide'); td(tr, r.proyecto, 'lt-hide-sm'); td(tr, r.asignada);
+      td(tr, r.estado); td(tr, r.proveedor || '—', 'lt-hide-sm'); td(tr, fmtFecha(r.fecha_adjudicacion), 'lt-num lt-hide-sm');
+      tb.appendChild(tr);
+    });
+    $('#cnt-all').textContent = rows.length > shown.length ? `Mostrando los ${shown.length} más recientes de ${rows.length}. Afiná la búsqueda para ver el resto.` : `${rows.length} procesos.`;
+  };
+
+  /* resumen + encabezado */
+  const drawResumen = () => {
+    const d = dash.data('resumen');
+    const r = d.status === 'ok' ? d.data.find((x) => x.pais === pais()) : null;
+    const where = 'pais=' + enc(pais());
+    document.querySelectorAll('[data-source="resumen"]').forEach((el) => {
+      el.dataset.where = where;
+      if (!r) { el.textContent = '—'; return; }
+      const f = el.dataset.field; const v = r[f];
+      if (f === 'semana') el.textContent = fmtFecha(v);
+      else if (f.startsWith('delta_')) el.textContent = v === '' ? 'Primer informe cargado' : (v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : 'Igual') + ' vs ' + fmtFecha(r.semana_anterior).slice(0, 5);
+      else el.textContent = v;
+      if (f.startsWith('delta_')) { el.classList.toggle('lt-up', v > 0); el.classList.toggle('lt-down', v < 0); }
+    });
+  };
+
+  function draw() {
+    document.querySelectorAll('#f-pais button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === pais())));
+    drawResumen();
+    if (tab === 'activas') { hbars($('#ch-etapas'), 'por_etapa', 'etapa', true); hbars($('#ch-resp'), 'por_responsable', 'responsable'); drawActivas(); }
+    if (tab === 'semana') { drawEvol(); drawMov(); }
+    if (tab === 'historico') { drawAnio(); drawCat(); }
+    if (tab === 'buscar') drawAll();
+  }
+
+  const start = location.hash.slice(1);
+  showTab(['activas', 'semana', 'historico', 'buscar'].includes(start) ? start : 'activas');
+  dash.onData(draw);
+})();
+</script>
+</body>
+</html>
