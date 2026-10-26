@@ -1,0 +1,81 @@
+/* Herramientas · Grupo ECIPSA — sistema visual compartido.
+   Idea: las herramientas son láminas de un legajo de obra. El navy es la línea del plano,
+   el naranja marca solo lo que se está por tocar (la parcela o la acción activa).
+   Tipografía: Urbanist reemplaza a Gilroy en web (misma familia geométrica) hasta tener la licencia web de Gilroy;
+   Open Sans para texto, como pide el manual. */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Urbanist:wght@500;600;800&display=swap');
+
+:root{
+  --navy:#28283D; --naranja:#FB7520; --naranja-osc:#C9530A; --gris:#575756; --papel:#F6F6F6; --blanco:#FFFFFF;
+  --fondo:var(--papel); --hoja:var(--blanco); --tinta:var(--navy); --texto:var(--gris); --suave:#7c7c86;
+  --linea:rgba(40,40,61,.16); --linea-fuerte:rgba(40,40,61,.55); --trama:rgba(40,40,61,.07);
+  --ok:#1d6b34; --error:#a3261f;
+  --tit:'Gilroy','Urbanist',Arial,sans-serif; --cuerpo:'Open Sans',Arial,sans-serif;
+  --r:6px;
+  color-scheme:light; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){ --fondo:#1d1d2c; --hoja:#262638; --tinta:#F2F2F5; --texto:#c9c9d3; --suave:#9a9aab;
+    --linea:rgba(242,242,245,.14); --linea-fuerte:rgba(242,242,245,.5); --trama:rgba(242,242,245,.05); --ok:#7fd492; --error:#ff9b97; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --fondo:#1d1d2c; --hoja:#262638; --tinta:#F2F2F5; --texto:#c9c9d3; --suave:#9a9aab;
+  --linea:rgba(242,242,245,.14); --linea-fuerte:rgba(242,242,245,.5); --trama:rgba(242,242,245,.05); --ok:#7fd492; --error:#ff9b97; color-scheme:dark; }
+
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--fondo);color:var(--texto);font-family:var(--cuerpo);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--naranja);outline-offset:3px;border-radius:2px}
+a{color:inherit}
+[hidden]{display:none!important}
+
+/* Barra superior: el logo y quién está trabajando */
+.eci-barra{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--hoja);border-bottom:1px solid var(--linea)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:20;background:var(--hoja)}
+.eci-barra-in{max-width:1180px;margin:0 auto;padding:0 24px;min-height:60px;display:flex;align-items:center;gap:20px}
+.eci-marca{display:inline-flex;flex-direction:column;line-height:1;text-decoration:none;color:var(--tinta)}
+.eci-marca .g{font-family:Arial,sans-serif;font-size:9.5px;letter-spacing:.42em;margin-bottom:2px}
+.eci-marca .e{font-family:var(--tit);font-weight:800;font-size:21px;letter-spacing:.01em}
+.eci-marca .e b{color:var(--naranja);font-weight:800}
+.eci-ruta{font-family:var(--tit);font-weight:600;font-size:15px;color:var(--suave);padding-left:20px;border-left:1px solid var(--linea)}
+.eci-ruta a{text-decoration:none}
+.eci-ruta a:hover{color:var(--tinta)}
+.eci-usuario{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:14px}
+.eci-usuario .nombre{color:var(--tinta);font-weight:600;margin-right:8px}
+
+/* Botones y campos */
+.eci-btn{font:600 15px/1 var(--cuerpo);min-height:44px;padding:0 18px;border-radius:var(--r);border:1px solid var(--linea-fuerte);background:transparent;color:var(--tinta);cursor:pointer}
+.eci-btn:hover{border-color:var(--tinta)}
+.eci-btn.pri{background:var(--naranja);border-color:var(--naranja);color:#fff}
+.eci-btn.pri:hover{background:var(--naranja-osc);border-color:var(--naranja-osc)}
+.eci-btn:disabled{opacity:.55;cursor:default}
+.eci-link{font:600 14px var(--cuerpo);background:none;border:0;padding:8px 6px;min-height:40px;color:var(--suave);cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--linea-fuerte)}
+.eci-link:hover{color:var(--tinta)}
+.eci-campo{display:grid;gap:6px;font-size:14px;color:var(--tinta);font-weight:600}
+.eci-campo input,.eci-campo select{font:400 16px var(--cuerpo);color:var(--tinta);background:var(--hoja);border:1px solid var(--linea-fuerte);border-radius:var(--r);min-height:46px;padding:0 12px;width:100%}
+.eci-campo input:focus,.eci-campo select:focus{outline:none;border-color:var(--naranja);box-shadow:0 0 0 3px rgba(251,117,32,.2)}
+.eci-aviso{font-size:14px;padding:10px 12px;border-left:3px solid currentColor;background:var(--trama)}
+.eci-aviso.error{color:var(--error)}
+.eci-aviso.ok{color:var(--ok)}
+
+/* Índice de láminas: una fila por herramienta, como el índice de un legajo de planos */
+.eci-indice{list-style:none;margin:0;padding:0;border-top:2px solid var(--tinta)}
+.eci-lamina{border-bottom:1px solid var(--linea)}
+.eci-lamina a{display:grid;grid-template-columns:56px minmax(0,1fr) auto;grid-template-areas:'cod tit abrir' 'cod desc abrir';gap:4px 20px;align-items:center;padding:20px 4px;text-decoration:none;color:inherit}
+.eci-lamina .cod{grid-area:cod;font-family:var(--tit);font-weight:800;font-size:40px;line-height:1;color:var(--tinta)}
+.eci-lamina h2,.eci-lamina h3{grid-area:tit;font-family:var(--tit);font-weight:700;font-size:21px;line-height:1.2;margin:0;color:var(--tinta)}
+.eci-lamina p{grid-area:desc;margin:0;font-size:15px;max-width:62ch}
+.eci-lamina .abrir{grid-area:abrir;font-weight:600;font-size:14px;color:var(--tinta);border:1px solid var(--linea-fuerte);border-radius:var(--r);padding:10px 14px;white-space:nowrap}
+.eci-lamina .det{display:block;font-size:13px;color:var(--suave);margin-top:4px}
+.eci-lamina a:hover .cod,.eci-lamina a:focus-visible .cod,.eci-lamina.activa .cod{color:var(--naranja)}
+.eci-lamina a:hover .abrir,.eci-lamina a:focus-visible .abrir{background:var(--naranja);border-color:var(--naranja);color:#fff}
+.eci-lamina.apagada a{cursor:default}
+.eci-lamina.apagada .cod,.eci-lamina.apagada h2,.eci-lamina.apagada h3{color:var(--suave)}
+@media (max-width:640px){
+  .eci-lamina a{grid-template-columns:36px minmax(0,1fr);grid-template-areas:'cod tit' 'cod desc' '. abrir';padding:18px 0;align-items:start}
+  .eci-lamina .cod{font-size:28px}
+  .eci-lamina .abrir{justify-self:start;margin-top:10px}
+  .eci-barra-in{padding:0 16px;gap:12px}
+  .eci-ruta,.eci-usuario .nombre{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
