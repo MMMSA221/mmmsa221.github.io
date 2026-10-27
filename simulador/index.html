@@ -194,6 +194,8 @@ footer{padding-block:16px 32px;font-size:12px;color:var(--muted)}
 :root{--c1:#FB7520;--c2:#3B5BA9;--c3:#9B08BF;--c4:#1E8C7E;--c5:#C9A227;--c6:#D9467A;--c7:#6E7D91;--c8:#B8B8C4}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--c2:#7C97E0;--c3:#C66BEA;--c4:#3FB8A8;--c5:#E3C24F;--c6:#F07AA3;--c7:#9AA8BA;--c8:#6A6A80}}
 :root[data-theme="dark"]{--c2:#7C97E0;--c3:#C66BEA;--c4:#3FB8A8;--c5:#E3C24F;--c6:#F07AA3;--c7:#9AA8BA;--c8:#6A6A80}
+.emp-rev{color:var(--warn);font-weight:600}.emp-ok{color:var(--muted)}
+#empTable select{height:36px;max-width:360px;width:100%}
 .bd-ctl{display:flex;align-items:center;gap:8px;font-size:13px}
 .bd-ctl select{height:36px}
 .bd-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--fg-2);margin:8px 0 0}
@@ -241,7 +243,7 @@ footer{border-top:1px solid var(--line)}
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 b</span></span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 e</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><span class="role" id="role">Visualizador</span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
@@ -288,6 +290,9 @@ footer{border-top:1px solid var(--line)}
     <b>Cargando obras…</b>
     <span id="dataSrc">Buscando la base de obras guardada.</span>
     <span class="spacer" style="flex:1"></span>
+    <button class="btn ghost" id="empOpen" type="button" hidden>Emprendimientos</button>
+    <label class="btn sec" id="empLbl" for="empIn" hidden>Cargar listado de emprendimientos</label>
+    <input type="file" id="empIn" accept=".xlsx,.xls" hidden>
     <label class="btn sec" id="importLbl" for="fileIn" hidden>Cargar Excel de obras</label>
     <input type="file" id="fileIn" accept=".xlsx,.xls" hidden>
     <div class="importbox" id="importBox" hidden>
@@ -296,6 +301,13 @@ footer{border-top:1px solid var(--line)}
       <button class="btn primary" id="importOk" type="button">Reemplazar la base</button>
       <button class="btn ghost" id="importCancel" type="button">Cancelar</button>
       <ul id="importList"></ul>
+    </div>
+    <div class="importbox" id="empBox" hidden>
+      <span id="empTxt"></span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn primary" id="empOk" type="button">Guardar asignaciones</button>
+      <button class="btn ghost" id="empCancel" type="button">Cerrar</button>
+      <div class="gwrap" style="flex-basis:100%"><table class="chg" id="empTable"></table></div>
     </div>
   </div>
 
@@ -322,7 +334,7 @@ footer{border-top:1px solid var(--line)}
   </section>
 
   <section class="panel">
-    <div class="ph"><h2 id="mTitle">Flujo mensual</h2><label class="bd-ctl" for="selDim">Desglosar por <select id="selDim"><option value="">Sin desglose</option><option value="t" selected>Tipo de obra</option><option value="p">Emprendimiento</option><option value="pr">Provincia</option><option value="o">Obra</option></select></label><span class="spacer"></span>
+    <div class="ph"><h2 id="mTitle">Flujo mensual</h2><label class="bd-ctl" for="selDim">Desglosar por <select id="selDim"><option value="">Sin desglose</option><option value="t" selected>Tipo de obra</option><option value="p">Emprendimiento</option><option value="pp">Proyecto de Planner</option><option value="pr">Provincia</option><option value="o">Obra</option></select></label><span class="spacer"></span>
       <div class="legend"><span><i style="background:var(--sim)"></i>Simulación</span><span><i class="line"></i><span class="refName">Base (Planner)</span></span><span><i class="dash"></i>Objetivo mensual (anual ÷ 12)</span></div></div>
     <div class="chartbox"><svg id="monthly" role="img" aria-label="Flujo mensual del año foco"></svg></div>
     <div class="bd-legend" id="bdLegend"></div>
@@ -456,7 +468,7 @@ function series(list, ch){
 const yearSum=(ser,y)=>{let t=0;for(let k=0;k<12;k++)t+=ser.get(y*12+k)||0;return t};
 function yearOf(o,ch,y){const p=plan(o,ch),d=distribuir(o,p.d);let t=0;for(let k=0;k<p.d;k++){const m=p.s+k;if(Math.floor(m/12)===y)t+=d[k]}return t}
 function filtered(){
-  const f=S.f; return OBRAS.filter(o=>(!f.prov||o.pr===f.prov)&&(!f.un||o.un===f.un)&&(!f.emp||o.p===f.emp)&&(!f.tipo||o.t===f.tipo));
+  const f=S.f; return OBRAS.filter(o=>(!f.prov||o.pr===f.prov)&&(!f.un||o.un===f.un)&&(!f.emp||o.em===f.emp)&&(!f.tipo||o.t===f.tipo));
 }
 const refCh=()=>{if(!S.ref)return null;const r=S.escList.find(x=>x.id===S.ref);return r?r.cambios||{}:null};
 const refName=()=>{if(!S.ref)return 'Base (Planner)';const r=S.escList.find(x=>x.id===S.ref);return r?r.nombre:'Base (Planner)'};
@@ -468,7 +480,7 @@ const differs=(o,rc)=>!samePlan(plan(o,S.changes),plan(o,rc));
 function fillSel(id,vals,all){const el=$(id);const cur=el.value;el.innerHTML='<option value="">'+all+'</option>'+vals.map(v=>`<option>${esc(v)}</option>`).join('');if(vals.includes(cur))el.value=cur}
 function buildFilters(){
   const u=k=>[...new Set(OBRAS.map(o=>o[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
-  fillSel('fProv',u('pr'),'Todas');fillSel('fUn',u('un'),'Todas');fillSel('fEmp',u('p'),'Todos');fillSel('fTipo',u('t'),'Todos');
+  fillSel('fProv',u('pr'),'Todas');fillSel('fUn',u('un'),'Todas');fillSel('fEmp',u('em'),'Todos');fillSel('fTipo',u('t'),'Todos');
 }
 [['fProv','prov'],['fUn','un'],['fEmp','emp'],['fTipo','tipo']].forEach(([id,k])=>$(id).addEventListener('change',e=>{S.f[k]=e.target.value;render()}));
 $('fClear').onclick=()=>{S.f={prov:'',un:'',emp:'',tipo:''};['fProv','fUn','fEmp','fTipo'].forEach(i=>$(i).value='');render()};
@@ -538,8 +550,8 @@ $('macro').addEventListener('click',e=>{const g=e.target.closest('[data-y]');if(
 let lastMonthly=null;
 // ---------- desglose por categoría ----------
 S.dim='t';const MAXCAT=7;
-const DIMN={t:'Tipo de obra',p:'Emprendimiento',pr:'Provincia',o:'Obra'};
-const catOf=o=>{const v=S.dim==='t'?o.t:S.dim==='p'?o.p:S.dim==='pr'?o.pr:o.o;return v||'Sin dato'};
+const DIMN={t:'Tipo de obra',p:'Emprendimiento',pp:'Proyecto de Planner',pr:'Provincia',o:'Obra'};
+const catOf=o=>{const v=S.dim==='t'?o.t:S.dim==='p'?o.em:S.dim==='pp'?o.p:S.dim==='pr'?o.pr:o.o;return v||'Sin dato'};
 function buildBD(list){ // categorías ordenadas por inversión simulada total; las que sobran van a "Otros"
   if(!S.dim)return null;const tot=new Map();
   list.forEach(o=>{const k=catOf(o);const p=plan(o,S.changes);tot.set(k,(tot.get(k)||0)+(p.d?o.m:0))});
@@ -547,10 +559,10 @@ function buildBD(list){ // categorías ordenadas por inversión simulada total; 
   const top=cats.length>MAXCAT+1?cats.slice(0,MAXCAT):cats;const other=cats.length>top.length;
   const col={};top.forEach((c,i)=>col[c]='var(--c'+(i+1)+')');
   const key=o=>{const c=catOf(o);return col[c]?c:'Otros'};
-  const order=other?top.concat(['Otros']):top;if(other)col['Otros']='var(--c8)';
+  const order=other?top.concat(['Otros']):top;if(other)col['Otros']='var(--c8)';const otherN=cats.length-top.length;
   const sim=new Map();order.forEach(c=>sim.set(c,new Map()));
   list.forEach(o=>{const p=plan(o,S.changes),d=distribuir(o,p.d),m=sim.get(key(o));d.forEach((v,k)=>m.set(p.s+k,(m.get(p.s+k)||0)+v))});
-  return {order,col,sim,key};
+  return {order,col,sim,key,otherN};
 }
 function stack(bd,months){ // [{c,v}] para un conjunto de meses
   return bd.order.map(c=>{const m=bd.sim.get(c);let v=0;months.forEach(x=>v+=m.get(x)||0);return {c,v}}).filter(x=>x.v>0.5);
@@ -564,20 +576,20 @@ function curva(p){if(p.length<2)return '';const n=p.length,dx=[],m=[],t=[];
 function stackRects(parts,x,w,sc,y0,lbl){let acc=0,h='';const zero=sc(0);
   parts.forEach(p=>{const top=sc(acc+p.v),bot=sc(acc);h+=`<rect x="${x}" y="${top}" width="${w}" height="${Math.max(0,bot-top-(bot-top>3?1:0))}" fill="${S.bd.col[p.c]}"><title>${esc(lbl)} · ${esc(p.c)}: ${fmtM(p.v)}</title></rect>`;acc+=p.v});return h}
 function renderLegend(){const el=$('bdLegend');if(!S.bd){el.innerHTML='';return}
-  el.innerHTML=S.bd.order.map(c=>`<span><i style="background:${S.bd.col[c]}"></i>${esc(c)}</span>`).join('')}
+  el.innerHTML=S.bd.order.map(c=>`<span><i style="background:${S.bd.col[c]}"></i>${esc(c)}${c==='Otros'?` (${S.bd.otherN} más: tocá un mes para verlos separados)`:''}</span>`).join('')}
 function renderDetail(){const el=$('mDetail');if(S.selMonth==null||!lastMonthly){el.hidden=true;return}
   const m=lastMonthly.ms[S.selMonth].m,rc=refCh();let list=filtered();
   const rows=[];list.forEach(o=>{const p=plan(o,S.changes),r=plan(o,rc);const sv=(m>=p.s&&m<p.s+p.d)?distribuir(o,p.d)[m-p.s]:0,bv=(m>=r.s&&m<r.s+r.d)?distribuir(o,r.d)[m-r.s]:0;if(sv>0.5||bv>0.5)rows.push({o,sv,bv})});
   const tot=rows.reduce((a,x)=>a+x.sv,0),totB=rows.reduce((a,x)=>a+x.bv,0);
-  const g=new Map();const kf=S.bd?S.bd.key:(()=> 'Todas las obras');rows.forEach(x=>{const k=kf(x.o);if(!g.has(k))g.set(k,[]);g.get(k).push(x)});
-  const order=S.bd?S.bd.order.filter(c=>g.has(c)):[...g.keys()];
+  const g=new Map();const kf=S.bd?catOf:(()=> 'Todas las obras');rows.forEach(x=>{const k=kf(x.o);if(!g.has(k))g.set(k,[]);g.get(k).push(x)});
+  const sumOf=c=>g.get(c).reduce((a,x)=>a+x.sv,0);const order=[...g.keys()].sort((a,b)=>sumOf(b)-sumOf(a));const colOf=c=>S.bd?(S.bd.col[c]||S.bd.col['Otros']):'';
   let h=`<h3>Composición de ${mLabel(m)} <span class="note">Simulación ${fmtM(tot)} · ${esc(refName())} ${fmtM(totB)} · ${rows.length} obras${S.bd?' · por '+DIMN[S.dim].toLowerCase():''}</span><span class="spacer" style="flex:1"></span><button class="x" type="button" id="mDetClose">Cerrar</button></h3>`;
   if(!rows.length)h+='<p class="note">No hay inversión en este mes con los filtros actuales.</p>';
   else{h+=`<table><thead><tr><th>${S.bd&&S.dim!=='o'?esc(DIMN[S.dim])+' / obra':'Obra'}</th><th class="r">Simulación</th><th class="r">% del mes</th><th class="r">${esc(refName())}</th><th class="r">Δ</th></tr></thead><tbody>`;
     order.forEach(c=>{const it=g.get(c).sort((a,b)=>b.sv-a.sv||b.bv-a.bv);const cs=it.reduce((a,x)=>a+x.sv,0),cb=it.reduce((a,x)=>a+x.bv,0),pc=tot?cs/tot*100:0;
       const showObras=!(S.bd&&S.dim==='o');
-      h+=`<tr class="cat"><td>${S.bd?`<i style="background:${S.bd.col[c]}"></i>`:''}${esc(c)}${showObras?` <span class="note">(${it.length})</span>`:''}</td><td class="r">${fmtM(cs)}</td><td class="r">${nf(pc,1)}%<span class="share"><b style="width:${Math.min(100,pc)}%"></b></span></td><td class="r">${fmtM(cb)}</td><td class="r">${dlt(cs-cb)}</td></tr>`;
-      if(showObras)it.forEach(x=>{h+=`<tr><td>${esc(x.o.o)}${S.dim==='p'?'':` <span class="note">· ${esc(x.o.p)}</span>`}</td><td class="r">${fmtM(x.sv)}</td><td class="r">${tot?nf(x.sv/tot*100,1):0}%</td><td class="r">${fmtM(x.bv)}</td><td class="r">${dlt(x.sv-x.bv)}</td></tr>`})});
+      h+=`<tr class="cat"><td>${S.bd?`<i style="background:${colOf(c)}"></i>`:''}${esc(c)}${showObras?` <span class="note">(${it.length})</span>`:''}</td><td class="r">${fmtM(cs)}</td><td class="r">${nf(pc,1)}%<span class="share"><b style="width:${Math.min(100,pc)}%"></b></span></td><td class="r">${fmtM(cb)}</td><td class="r">${dlt(cs-cb)}</td></tr>`;
+      if(showObras)it.forEach(x=>{h+=`<tr><td>${esc(x.o.o)}${S.dim==='pp'?'':` <span class="note">· ${esc(S.dim==='p'&&x.o.p===x.o.em?'':x.o.p)}</span>`.replace(' <span class="note">· </span>','')}</td><td class="r">${fmtM(x.sv)}</td><td class="r">${tot?nf(x.sv/tot*100,1):0}%</td><td class="r">${fmtM(x.bv)}</td><td class="r">${dlt(x.sv-x.bv)}</td></tr>`})});
     h+='</tbody></table>'}
   el.innerHTML=h;el.hidden=false;
   $('mDetClose').onclick=()=>{S.selMonth=null;$('monthly').querySelectorAll('[data-k]').forEach(x=>x.classList.remove('sel'));showMonth(null);renderDetail()};
@@ -623,14 +635,14 @@ function renderGantt(){
   if(S.q)list=list.filter(o=>(o.o+' '+o.p).toLowerCase().includes(S.q));
   if(S.onlyYear)list=list.filter(o=>{const p=plan(o,S.changes),r=plan(o,rc);return (p.s<=Ye&&p.s+p.d-1>=Ys)||(r.s<=Ye&&r.s+r.d-1>=Ys)});
   if(S.onlyChanged)list=list.filter(o=>isChanged(o)||differs(o,rc));
-  list.sort((a,b)=>a.p.localeCompare(b.p,'es')||a.s0-b.s0);
+  list.sort((a,b)=>a.em.localeCompare(b.em,'es')||a.p.localeCompare(b.p,'es')||a.s0-b.s0);
   $('gCount').textContent=list.length+(list.length===1?' obra':' obras');
   const mh=MES.map((m,k)=>`<span class="${Ys+k===NOW?'now':''}">${m}</span>`).join('');
   let h=`<thead><tr><th style="width:300px">Obra</th><th style="width:150px">Inicio</th><th style="width:130px">Plazo</th><th><div class="mhead">${mh}</div></th><th style="width:120px;text-align:right">${y} sim.</th><th style="width:120px;text-align:right">Δ vs ${S.ref?'ref.':'base'}</th></tr></thead><tbody>`;
   if(!list.length)h+=`<tr><td colspan="6" class="note" style="padding:24px">No hay obras con estos filtros${S.onlyYear?' en '+y:''}. Probá limpiar filtros o la búsqueda, o desmarcar “Solo obras del año foco”.</td></tr>`;
   let cur=null, totM=new Array(12).fill(0), totS=0, totD=0;
   list.forEach(o=>{
-    if(o.p!==cur){cur=o.p;const grp=list.filter(x=>x.p===cur);let gs=0,gb=0;grp.forEach(x=>{gs+=yearOf(x,S.changes,y);gb+=yearOf(x,rc,y)});
+    if(o.em!==cur){cur=o.em;const grp=list.filter(x=>x.em===cur);let gs=0,gb=0;grp.forEach(x=>{gs+=yearOf(x,S.changes,y);gb+=yearOf(x,rc,y)});
       h+=`<tr class="grp"><td colspan="4">${esc(cur)}</td><td class="num" style="text-align:right">${fmtM(gs)}</td><td class="num" style="text-align:right">${dlt(gs-gb)}</td></tr>`}
     const p=plan(o,S.changes),r=plan(o,rc),c=S.changes[o.id]||{},sh=o.lock?0:(c.s||0),dd=o.lock?0:(c.d||0);
     const dist=distribuir(o,p.d); const yb=yearOf(o,rc,y), ys=yearOf(o,S.changes,y);
@@ -639,7 +651,7 @@ function renderGantt(){
     const tags=[o.lock?`<span class="pill lock">Bloqueada · en curso ${nf(o.pct*100,0)}%</span>`:'',vencido?'<span class="pill warn">Inicio vencido, sin avance</span>':'',!o.m?'<span class="pill warn">Sin presupuesto</span>':'',isChanged(o)?'<span class="pill mod">Movida</span>':''].join('');
     const dis=o.lock?'disabled':'';
     h+=`<tr class="${isChanged(o)?'changed':''}" data-id="${esc(o.id)}">
-      <td><div class="oname">${esc(o.o)}</div><div class="ometa"><span>${esc(o.t)}</span><span>${esc(o.pr)}</span><span class="num">${fmtM(o.m)}</span>${o.link?`<a href="${esc(o.link)}" target="_blank" rel="noopener">Planner ↗</a>`:''}</div><div class="ometa">${tags}</div></td>
+      <td><div class="oname">${esc(o.o)}</div><div class="ometa">${o.p!==o.em?`<span>${esc(o.p)}</span>`:''}<span>${esc(o.t)}</span><span>${esc(o.pr)}</span><span class="num">${fmtM(o.m)}</span>${o.link?`<a href="${esc(o.link)}" target="_blank" rel="noopener">Planner ↗</a>`:''}</div><div class="ometa">${tags}</div></td>
       <td><div class="ctl"><button class="b" type="button" data-a="s-" ${dis||(sh<=minShift(o)?'disabled':'')} aria-label="Adelantar un mes">−</button>
         <input type="number" step="1" data-a="s" value="${sh}" ${dis} aria-label="Desplazamiento en meses de ${esc(o.o)}">
         <button class="b" type="button" data-a="s+" ${dis} aria-label="Atrasar un mes">+</button></div>
@@ -774,6 +786,7 @@ $('fileIn').addEventListener('change',async e=>{const f=e.target.files[0];e.targ
     if(dups.length)li.push(`${dups.length} Id repetidos: se usa la primera fila de cada uno`);
     if(pctFix)li.push(`${pctFix} avances venían como número entero (ej. 2) y se tomaron como porcentaje (2%)`);
     if(noBudget)li.push(`${noBudget} obras sin presupuesto: se muestran en $ 0`);
+    {const py=out.filter(o=>normE(o.pr)==='paraguay').length;if(py)li.push(`${py} obras de Paraguay: se guardan pero quedan fuera del cálculo (montos en USD)`)}
     if(c.un<0)li.push('No hay columna “Unidad de Negocio”: se asigna Natania a todas');
     $('importList').innerHTML=li.map(x=>`<li>${x}</li>`).join('')||'<li>Sin observaciones.</li>';
     $('importBox').hidden=false;
@@ -783,14 +796,62 @@ $('importOk').onclick=async()=>{const pi=S.pendingImport;if(!pi)return;
   try{const info={archivo:pi.file,cargado:new Date().toISOString()};
     if(S.db)await S.db.doc('base/obras').set({obras:pi.out,archivo:pi.file,cargado:info.cargado,por:S.uid||null});
     setBase(pi.out,info);S.pendingImport=null;$('importBox').hidden=true;toast(pi.out.length+' obras cargadas desde '+pi.file)}catch(e){writeFail(e)}};
-function setBase(list,info){OBRAS=prep(list);S.loaded=true;
+// ---------- emprendimientos (listado oficial) ----------
+S.emp={lista:[],alias:{}};
+const normE=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const codeE=s=>{const n=normE(s),m=n.match(/^(n\d+)/);return m?m[1]:n.split(' ')[0]};
+const STOPE=new Set('obra obras etapa infra de la el los las b sector y i ii iii iv v vcc sur subdivision'.split(' '));
+const toksE=s=>new Set(normE(s).split(' ').filter(t=>t&&!STOPE.has(t)&&!/^n\d+$/.test(t)));
+function autoEmp(p){const L=S.emp.lista.map(x=>x.nombre);if(!L.length)return null;const n=normE(p);
+  const ex=L.find(l=>normE(l)===n);if(ex)return {em:ex,how:'exacto'};
+  const c=L.filter(l=>codeE(l)===codeE(p));const tp=toksE(p);
+  const sc=c.map(l=>{let k=0;toksE(l).forEach(t=>{if(tp.has(t))k++});return {l,k}}).sort((a,b)=>b.k-a.k);
+  // si el proyecto tiene un número (altura, lote) que no está en el emprendimiento, se marca para revisar
+  const numOk=l=>{const nl=toksE(l);return [...tp].filter(t=>/\d/.test(t)).every(t=>nl.has(t))};
+  const pick=l=>numOk(l)?{em:l,how:'parecido'}:{em:p,how:'nombre de Planner',par:l};
+  if(sc.length===1)return sc[0].k?pick(sc[0].l):{em:sc[0].l,how:'revisar'};
+  if(sc.length>1&&sc[0].k>0&&sc[0].k>sc[1].k)return pick(sc[0].l);
+  return null}
+function empOf(p){const al=S.emp.alias[p];if(al)return al==='__planner'?p:al;const a=autoEmp(p);return a?a.em:p}
+function applyEmp(){OBRAS.forEach(o=>o.em=empOf(o.p))}
+// Paraguay (montos en USD) queda fuera del cálculo por ahora: se guarda en la base pero no suma.
+const esPY=o=>{if(normE(o.pr)==='paraguay')return true;const e=S.emp.lista.find(x=>x.nombre===empOf(o.p));return !!(e&&normE(e.pais)==='paraguay')};
+function rebuild(){const raw=S.raw||[];S.excl=raw.filter(esPY);OBRAS=prep(raw.filter(o=>!esPY(o)));applyEmp()}
+function setBase(list,info){S.raw=list;rebuild();S.loaded=true;
   if(info&&!S.yearSet){S.yearSet=true;const cur=Math.floor(NOW/12),c={};OBRAS.forEach(o=>{for(let k=0;k<o.d0;k++){const y=Math.floor((o.s0+k)/12);c[y]=(c[y]||0)+o.m/o.d0}});const fut=Object.keys(c).map(Number).filter(y=>y>=cur&&c[y]>0).sort((x,z)=>x-z);S.year=Math.max(Y0,fut.length?fut[0]:cur)}
   $('sampleBanner').querySelector('b').textContent=info?'Datos cargados':'Sin obras cargadas';
-  $('dataSrc').textContent=info?`${list.length} obras · ${info.archivo||'Excel'} · cargado ${new Date(info.cargado).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})} · Presupuesto actualizado por CAC; reparto en partes iguales por mes.`:(S.canWrite?'Todavía no hay una base de obras. Cargá el Excel exportado de Planner (Costos Obras) para empezar.':'Todavía no hay una base de obras. Un editor tiene que cargar el Excel de Planner.');
+  $('dataSrc').textContent=info?`${OBRAS.length} obras${S.excl.length?` (+${S.excl.length} de Paraguay excluidas: montos en USD)`:''} · ${info.archivo||'Excel'} · cargado ${new Date(info.cargado).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})} · Presupuesto actualizado por CAC; reparto en partes iguales por mes.`:(S.canWrite?'Todavía no hay una base de obras. Cargá el Excel exportado de Planner (Costos Obras) para empezar.':'Todavía no hay una base de obras. Un editor tiene que cargar el Excel de Planner.');
   buildFilters();render()}
 
+$('empIn').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(!window.XLSX){toast('No se pudo cargar el lector de Excel. Recargá la página.');return}
+  try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null});
+    const hi=rows.findIndex(r=>r&&r.some(x=>normE(x)==='emprendimiento'));if(hi<0)throw new Error('No encontré la columna “EMPRENDIMIENTO”.');
+    const H=rows[hi].map(normE),ce=H.indexOf('emprendimiento'),cp=H.indexOf('provincia'),cpa=H.findIndex(x=>x==='pais');
+    const lista=[];const seen=new Set();rows.slice(hi+1).forEach(r=>{const n=r&&r[ce]!=null?String(r[ce]).replace(/\u00a0/g,' ').trim():'';if(!n||seen.has(normE(n)))return;seen.add(normE(n));lista.push({nombre:n,provincia:cp>=0?String(r[cp]||'').trim():'',pais:cpa>=0?String(r[cpa]||'').trim():''})});
+    if(!lista.length)throw new Error('El listado está vacío.');
+    S.emp={lista,alias:S.emp.alias||{},archivo:f.name};openEmp(true);
+  }catch(err){toast('No se pudo leer el listado: '+(err.message||err))}});
+function openEmp(nuevo){const box=$('empBox'),L=S.emp.lista.map(x=>x.nombre).sort((a,b)=>a.localeCompare(b,'es'));
+  const projs=[...new Set((S.raw||OBRAS).map(o=>o.p))].sort((a,b)=>a.localeCompare(b,'es'));
+  let rev=0;const rows=projs.map(p=>{const a=autoEmp(p),al=S.emp.alias[p],cur=al==='__planner'||(!al&&a&&a.em===p)?'__planner':(al||(a?a.em:''));const how=S.emp.alias[p]?'manual':a?a.how:'sin asignar';if(how==='revisar'||how==='sin asignar')rev++;
+    return `<tr data-p="${esc(p)}"><td>${esc(p)} <span class="note">(${(S.raw||OBRAS).filter(o=>o.p===p).length} obras${(S.raw||[]).some(o=>o.p===p&&esPY(o))?' · Paraguay, fuera del cálculo':''})</span></td><td><select aria-label="Emprendimiento de ${esc(p)}"><option value="">— Sin asignar —</option><option value="__planner"${cur==='__planner'?' selected':''}>Usar el nombre de Planner: ${esc(p)}</option>${L.map(l=>`<option${l===cur?' selected':''}>${esc(l)}</option>`).join('')}</select></td><td class="${how==='revisar'||how==='sin asignar'?'emp-rev':'emp-ok'}">${how==='revisar'?'Revisar: solo coincide el código':how==='sin asignar'?'Revisar: sin coincidencia':how==='nombre de Planner'?'Nombre de Planner (en el listado figura '+esc(a.par)+')':how}</td></tr>`}).join('');
+  $('empTxt').innerHTML=`${nuevo?'Listado <b>'+esc(S.emp.archivo||'')+'</b>: ':''}<b>${L.length} emprendimientos</b>. Cada proyecto de Planner se asigna a un emprendimiento del listado. ${rev?`<span class="emp-rev">${rev} para revisar.</span>`:'Todos asignados.'}`;
+  $('empTable').innerHTML='<thead><tr><th>Proyecto de Planner</th><th>Emprendimiento</th><th>Cómo se asignó</th></tr></thead><tbody>'+rows+'</tbody>';
+  box.hidden=false;box.scrollIntoView({block:'nearest'})}
+$('empOpen').onclick=()=>openEmp(false);
+$('empCancel').onclick=()=>{$('empBox').hidden=true};
+$('empOk').onclick=async()=>{const alias={};$('empTable').querySelectorAll('tr[data-p]').forEach(tr=>{const v=tr.querySelector('select').value;const p=tr.dataset.p;const a=autoEmp(p);const auto=a?(a.em===p?'__planner':a.em):'';if(v&&(v!==auto||a.how==='revisar'))alias[p]=v});
+  Object.keys(S.emp.alias||{}).forEach(p=>{if(!(S.raw||OBRAS).some(o=>o.p===p))alias[p]=S.emp.alias[p]});
+  const doc={lista:S.emp.lista,alias,archivo:S.emp.archivo||'',cargado:new Date().toISOString()};
+  try{if(S.db)await S.db.doc('config/emprendimientos').set(doc);S.emp=doc;rebuild();buildFilters();$('empBox').hidden=true;render();toast('Emprendimientos guardados')}catch(e){writeFail(e)}};
+function empStatus(){const sinL=!S.emp.lista.length;const sinA=sinL?0:[...new Set(OBRAS.map(o=>o.p))].filter(p=>!S.emp.alias[p]&&!autoEmp(p)).length;
+  $('empLbl').hidden=!S.canWrite;$('empOpen').hidden=!(S.canWrite&&!sinL);
+  let n=$('empNote');if(!n){n=document.createElement('span');n.id='empNote';n.className='note';n.style.flexBasis='100%';$('dataSrc').after(n)}
+  n.textContent=sinL?'Sin listado de emprendimientos: se usan los nombres de proyecto de Planner.':(sinA?`${sinA} proyectos de Planner sin emprendimiento asignado.`:`Emprendimientos según ${S.emp.archivo||'el listado oficial'} (${S.emp.lista.length}).`)}
+
 // ---------- render ----------
-function render(){
+function render(){empStatus();
   updHorizon();$('macroTitle').textContent='Inversión por año · '+Y0+'–'+Y1;
   const list=filtered(),rc=refCh();const refS=series(list,rc),simS=series(list,S.changes);
   S.bd=buildBD(list);renderYears();renderKPIs(list,refS,simS);renderChanges(list);renderMacro(refS,simS);renderMonthly(refS,simS);renderLegend();renderDetail();renderGantt();renderEsc();renderObj();
@@ -811,6 +872,7 @@ buildFilters();render();
     db.collection('escenarios').onSnapshot(snap=>{S.escList=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es'));
       if(S.esc&&!S.escList.find(x=>x.id===S.esc)){S.esc=null}if(S.ref&&!S.escList.find(x=>x.id===S.ref)){S.ref=null}render();resolveNames()},()=>{});
     db.doc('config/objetivos').onSnapshot(d=>{S.obj=(d.exists&&d.data().anios)||{};render()},()=>{});
+    db.doc('config/emprendimientos').onSnapshot(d=>{if(d.exists){const x=d.data();S.emp={lista:x.lista||[],alias:x.alias||{},archivo:x.archivo||''};rebuild();buildFilters();render()}},()=>{});
     db.doc('base/obras').onSnapshot(d=>{if(d.exists&&Array.isArray(d.data().obras)&&d.data().obras.length){const x=d.data();setBase(x.obras,{archivo:x.archivo,cargado:x.cargado})}else if(!S.loaded)setBase([],null)},()=>{if(!S.loaded){$('sampleBanner').querySelector('b').textContent='No se pudo leer la base';$('dataSrc').textContent='Revisá la conexión y recargá la página.'}});
   }catch(e){}
 })();
