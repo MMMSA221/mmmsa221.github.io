@@ -265,7 +265,7 @@ footer{border-top:1px solid var(--line)}
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 l</span></span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 m</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><span class="role" id="role">Visualizador</span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
@@ -366,7 +366,7 @@ footer{border-top:1px solid var(--line)}
   </section>
 
   <section class="panel">
-    <div class="ph"><h2 id="mTitle">Flujo mensual</h2><label class="bd-ctl" for="selDim">Desglosar por <select id="selDim"><option value="">Sin desglose</option><option value="t" selected>Tipo de obra</option><option value="p">Emprendimiento</option><option value="pr">Provincia</option><option value="o">Obra</option></select></label><span class="spacer"></span>
+    <div class="ph"><h2 id="mTitle">Flujo mensual</h2><label class="bd-ctl" for="selPer">Período <select id="selPer"><option value="1">1 año</option><option value="2">2 años</option><option value="3">3 años</option><option value="all">Todos los años</option></select></label><label class="bd-ctl" for="selDim">Desglosar por <select id="selDim"><option value="">Sin desglose</option><option value="t" selected>Tipo de obra</option><option value="p">Emprendimiento</option><option value="pr">Provincia</option><option value="o">Obra</option></select></label><span class="spacer"></span>
       <div class="legend"><span><i style="background:var(--sim)"></i>Simulación</span><span><i class="line"></i><span class="refName">Base (Planner)</span></span><span><i class="dash"></i>Objetivo mensual (anual ÷ 12)</span></div></div>
     <div class="chartbox"><svg id="monthly" role="img" aria-label="Flujo mensual del año foco"></svg></div>
     <div class="bd-legend" id="bdLegend"></div>
@@ -545,7 +545,12 @@ function buildFilters(){
 [['fProv','prov'],['fUn','un'],['fEmp','emp'],['fTipo','tipo']].forEach(([id,k])=>$(id).addEventListener('change',e=>{S.f[k]=e.target.value;render()}));
 $('fClear').onclick=()=>{S.f={prov:'',un:'',emp:'',tipo:''};['fProv','fUn','fEmp','fTipo'].forEach(i=>$(i).value='');render()};
 $('onlyYear').onchange=e=>{S.onlyYear=e.target.checked;renderGantt()};
-$('tlMode').onchange=e=>{S.tl=e.target.value;renderGantt()};
+// Período compartido entre el flujo mensual y la tabla de obras (1, 2, 3 años desde el año foco, o todos)
+function setPer(v){S.tl=v;S.selMonth=null;$('tlMode').value=v;$('selPer').value=v;render()}
+$('tlMode').onchange=e=>setPer(e.target.value);$('selPer').onchange=e=>setPer(e.target.value);
+// Meses que muestra el flujo mensual según el período
+function perMonths(){const t=S.tl||'1';if(t==='all'){const a=[];for(let m=Y0*12;m<=Y1*12+11;m++)a.push(m);return a}const n=+t,a=[];for(let k=0;k<12*n;k++)a.push(S.year*12+k);return a}
+function perLabel(){const t=S.tl||'1';if(t==='all')return Y0+'–'+Y1;const n=+t;return n>1?S.year+'–'+(S.year+n-1):''+S.year}
 $('onlyChanged').onchange=e=>{S.onlyChanged=e.target.checked;renderGantt()};
 let qt;$('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();renderGantt()},120)});
 
@@ -638,8 +643,8 @@ function stackRects(parts,x,w,sc,y0,lbl){let acc=0,h='';const zero=sc(0);
 // Leyenda: solo lo que tiene inversión en el año foco, de mayor a menor, con su monto. Las primeras 20 a la vista.
 S.legAll=false;
 function renderLegend(){const el=$('bdLegend');if(!S.bd){el.innerHTML='';return}
-  const ms=Array.from({length:12},(_,k)=>S.year*12+k);const it=stack(S.bd,ms).sort((a,b)=>b.v-a.v);
-  if(!it.length){el.innerHTML='<span class="note">Sin inversión en '+S.year+'.</span>';return}
+  const ms=perMonths();const it=stack(S.bd,ms).sort((a,b)=>b.v-a.v);
+  if(!it.length){el.innerHTML='<span class="note">Sin inversión en '+perLabel()+'.</span>';return}
   const MAX=20,vis=S.legAll?it:it.slice(0,MAX);
   el.innerHTML=vis.map(x=>`<span><i style="background:${S.bd.col[x.c]}"></i>${esc(x.c)} <b class="num">${fmtM(x.v)}</b></span>`).join('')+
     (it.length>MAX?`<button type="button" class="legmore" id="legMore">${S.legAll?'Ver menos':'Ver las '+it.length+' ('+(it.length-MAX)+' más)'}</button>`:'');
@@ -663,22 +668,26 @@ function renderDetail(){const el=$('mDetail');if(S.selMonth==null||!lastMonthly)
 }
 $('selDim').addEventListener('change',e=>{S.dim=e.target.value;render()});
 function renderMonthly(refS,simS){
-  const y=S.year;$('mTitle').textContent='Flujo mensual '+y;
+  const y=S.year;$('mTitle').textContent='Flujo mensual '+perLabel();
   const svg=$('monthly'),W=chartW(svg),H=260,pl=W<500?48:64,pr=8,pt=16,pb=28;
-  const ms=[];for(let k=0;k<12;k++){const m=y*12+k;ms.push({m,b:refS.get(m)||0,s:simS.get(m)||0})}
+  const ms=perMonths().map(m=>({m,b:refS.get(m)||0,s:simS.get(m)||0,o:(S.obj[Math.floor(m/12)]||0)/12})),N=ms.length;
   const om=(S.obj[y]||0)/12;
-  const mx=niceMax(Math.max(1,om,...ms.map(d=>Math.max(d.b,d.s))));
-  const cw=(W-pl-pr)/12, sc=v=>pt+(H-pt-pb)*(1-v/mx);
+  const mx=niceMax(Math.max(1,...ms.map(d=>Math.max(d.b,d.s,d.o))));
+  const cw=(W-pl-pr)/N, sc=v=>pt+(H-pt-pb)*(1-v/mx);
+  // Etiquetas: con muchos meses, solo el año en enero (y la inicial del mes si entra)
+  const lbl=(m,k)=>{const j=((m%12)+12)%12;if(N<=12)return W<420?MES[j][0].toUpperCase():MES[j];if(j===0)return N>48?String(Math.floor(m/12)):"'"+String(Math.floor(m/12)).slice(2);return N<=36&&cw>=12?MES[j][0].toUpperCase():''};
   let g='';
   for(let i=0;i<=4;i++){const v=mx*i/4,yy=sc(v);g+=`<line class="grid" x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}"/><text x="${pl-8}" y="${yy+4}" text-anchor="end">${axisLbl(v)}</text>`}
-  ms.forEach((d,k)=>{const x=pl+k*cw,bw=Math.min(22,cw*.3),cx=x+cw/2;
+  ms.forEach((d,k)=>{const x=pl+k*cw,bw=N<=12?Math.min(22,cw*.3):Math.max(1.5,Math.min(14,cw*.7)),cx=x+cw/2,j=((d.m%12)+12)%12;
+    if(N>12&&j===0&&k>0)g+=`<line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb+4}" stroke="var(--line)" stroke-width="1" pointer-events="none"/>`;
     g+=`<g data-k="${k}" tabindex="0" role="button" aria-label="${mLabel(d.m)}: simulación ${fmtM(d.s)}, ${esc(refName())} ${fmtM(d.b)}" class="${S.selMonth===k?'sel':''}"><rect x="${x}" y="${pt}" width="${cw}" height="${H-pt-pb}" fill="transparent" class="mhit" rx="4"/>
      ${S.bd?stackRects(stack(S.bd,[d.m]),cx-bw/2,bw,sc,H-pb,mLabel(d.m)):`<rect x="${cx-bw/2}" y="${sc(d.s)}" width="${bw}" height="${Math.max(0,H-pb-sc(d.s))}" fill="var(--sim)" rx="2"/>`}
      ${d.m===NOW?`<text x="${cx}" y="${pt-4}" text-anchor="middle" style="fill:var(--orange-ink);font-weight:700">hoy</text>`:''}
-     <text x="${cx}" y="${H-8}" text-anchor="middle">${W<420?MES[k][0].toUpperCase():MES[k]}</text></g>`});
+     <text x="${N>12&&j===0?x+2:cx}" y="${H-8}" text-anchor="${N>12&&j===0?'start':'middle'}" style="${N>12&&j===0?'fill:var(--fg);font-weight:700':''}">${lbl(d.m,k)}</text></g>`});
   const path=curva(ms.map((d,k)=>[pl+k*cw+cw/2,sc(d.b)]));
-  g+=`<path d="${path}" fill="none" stroke="var(--base)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`+ms.map((d,k)=>`<circle cx="${pl+k*cw+cw/2}" cy="${sc(d.b)}" r="2.5" fill="var(--surface)" stroke="var(--base)" stroke-width="1.5" pointer-events="none"/>`).join('');
-  if(om)g+=`<line x1="${pl}" x2="${W-pr}" y1="${sc(om)}" y2="${sc(om)}" stroke="var(--obj)" stroke-width="2" stroke-dasharray="6 4" pointer-events="none"/>`;
+  g+=`<path d="${path}" fill="none" stroke="var(--base)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`+(N>36?'':ms.map((d,k)=>`<circle cx="${pl+k*cw+cw/2}" cy="${sc(d.b)}" r="2.5" fill="var(--surface)" stroke="var(--base)" stroke-width="1.5" pointer-events="none"/>`).join(''));
+  // Objetivo mensual: el de cada año (anual ÷ 12), un tramo por año
+  for(let k=0;k<N;){const yy=Math.floor(ms[k].m/12);let e=k;while(e<N&&Math.floor(ms[e].m/12)===yy)e++;const o=ms[k].o;if(o)g+=`<line x1="${pl+k*cw}" x2="${pl+e*cw}" y1="${sc(o)}" y2="${sc(o)}" stroke="var(--obj)" stroke-width="2" stroke-dasharray="6 4" pointer-events="none"/>`;k=e}
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
   lastMonthly={ms,om};
   showMonth(S.selMonth);
@@ -686,7 +695,7 @@ function renderMonthly(refS,simS){
 function showMonth(k){
   if(k==null||!lastMonthly){$('readout').textContent='Tocá un mes para ver todo lo que compone ese total.';return}
   const d=lastMonthly.ms[k],df=d.s-d.b;
-  $('readout').innerHTML=`<b>${mLabel(d.m)}</b> · Simulación <b class="num">${fmtM(d.s)}</b> · ${esc(refName())} <span class="num">${fmtM(d.b)}</span> · Diferencia <span class="delta ${df>0.5?'up':df<-0.5?'down':''} num">${df>=0?'+':'−'}${fmtM(Math.abs(df))}</span>${lastMonthly.om?' · Objetivo <span class="num">'+fmtM(lastMonthly.om)+'</span>':''}`;
+  $('readout').innerHTML=`<b>${mLabel(d.m)}</b> · Simulación <b class="num">${fmtM(d.s)}</b> · ${esc(refName())} <span class="num">${fmtM(d.b)}</span> · Diferencia <span class="delta ${df>0.5?'up':df<-0.5?'down':''} num">${df>=0?'+':'−'}${fmtM(Math.abs(df))}</span>${d.o?' · Objetivo <span class="num">'+fmtM(d.o)+'</span>':''}`;
 }
 const mon=$('monthly');
 mon.addEventListener('mousemove',e=>{const g=e.target.closest('[data-k]');if(g)showMonth(+g.dataset.k)});
