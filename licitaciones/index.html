@@ -153,7 +153,7 @@
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Licitaciones de Abastecimiento Estratégico <span style="font-weight:400;font-size:12px">· versión 26-10 d</span></span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Licitaciones de Abastecimiento Estratégico <span style="font-weight:400;font-size:12px">· versión 26-10 e</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
@@ -379,14 +379,34 @@
   const nombrePersona = function (a) { return String(a || '').split('/').map(function (x) { x = x.trim(); return PERSONAS[x] || x; }).join(' / '); };
   const normProv = function (p) { p = (p || '').trim(); return p === 'Neuquen' ? 'Neuquén' : p || 'Sin provincia'; };
   const hayFiltro = function () { return !!(PARAMS.prov || PARAMS.emp); };
-  let PLAZA = {};   // clave del proceso → provincia, para filtrar los movimientos
+  let PLAZA = {}, EMP = null;   // EMP: base oficial de emprendimientos (tabla public.emprendimientos)
+  // Vincula cada fila del informe con la base oficial: el nombre y la provincia salen de la base, no del informe
+  async function vincular() {
+    let alias = {};
+    try {
+      const [e, a] = await Promise.all([api('emprendimientos?select=nombre,pais,provincia&vigente=is.true'), api('emprendimientos_alias?select=alias,emprendimiento,tipo')]);
+      EMP = {}; (e || []).forEach(function (x) { EMP[x.nombre] = x; });
+      (a || []).forEach(function (x) { alias[x.alias.trim()] = x; });
+    } catch (err) { EMP = null; }
+    const asignar = function (r) {
+      const a = alias[(r.proyecto || '').trim()];
+      if (a && a.tipo === 'descartado') return false;
+      if (a && a.tipo === 'vinculado' && EMP && EMP[a.emprendimiento]) { r.proyecto = a.emprendimiento; r._prov = EMP[a.emprendimiento].provincia; r._emp = a.emprendimiento; }
+      else if (a && a.tipo === 'varios') { r.proyecto = 'Varios'; r._prov = normProv(r.plaza); r._emp = 'Varios'; }
+      else { r._prov = normProv(r.plaza); r._emp = ''; }   // sin vincular: queda en los totales, no en el filtro de emprendimiento
+      return true;
+    };
+    RAW.procesos = (RAW.procesos || []).filter(asignar);
+    const vivos = {}; RAW.procesos.forEach(function (r) { vivos[r.clave] = r; });
+    RAW.movimientos = (RAW.movimientos || []).filter(function (r) { const p = vivos[r.clave]; if (p) { r.proyecto = p.proyecto; r._emp = p._emp; return true; } return asignar(r); });
+  }   // clave del proceso → provincia, para filtrar los movimientos
   function filtrar(n) {
     const key = n + '|' + (PARAMS.prov || '') + '|' + (PARAMS.emp || '');
     if (CACHE[key]) return CACHE[key];
     const ok = function (prov, emp) { return (!PARAMS.prov || prov === PARAMS.prov) && (!PARAMS.emp || emp === PARAMS.emp); };
     const out = n === 'procesos'
-      ? RAW.procesos.filter(function (r) { return ok(normProv(r.plaza), r.proyecto); })
-      : RAW.movimientos.filter(function (r) { return ok(PLAZA[r.clave] || 'Sin provincia', r.proyecto); });
+      ? RAW.procesos.filter(function (r) { return ok(r._prov, r._emp); })
+      : RAW.movimientos.filter(function (r) { return ok(PLAZA[r.clave] || r._prov || 'Sin provincia', r._emp); });
     return (CACHE[key] = out);
   }
   // Resumen del último informe recalculado sobre los procesos filtrados (la evolución semanal no tiene el detalle por provincia)
@@ -404,10 +424,15 @@
   }
   function armarFiltros() {
     const sp = document.getElementById('f-prov'), se = document.getElementById('f-emp');
-    const provs = Array.from(new Set(RAW.procesos.map(function (r) { return normProv(r.plaza); }))).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+    const cmp = function (a, b) { return a.localeCompare(b, 'es'); };
+    const oficiales = EMP ? Array.from(new Set(Object.values(EMP).map(function (x) { return x.provincia; }))).sort(cmp) : [];
+    const otras = Array.from(new Set(RAW.procesos.map(function (r) { return r._prov; }))).filter(function (p) { return oficiales.indexOf(p) < 0; }).sort(cmp);
+    const provs = oficiales.concat(otras);
     sp.innerHTML = '<option value="">Todas</option>' + provs.map(function (p) { return '<option>' + p.replace(/</g, '&lt;') + '</option>'; }).join('');
     sp.value = PARAMS.prov || '';
-    const emps = Array.from(new Set(RAW.procesos.filter(function (r) { return !PARAMS.prov || normProv(r.plaza) === PARAMS.prov; }).map(function (r) { return r.proyecto; }).filter(Boolean))).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+    // Emprendimientos de la base oficial (de la provincia elegida), más "Varios"
+    const emps = (EMP ? Object.values(EMP).filter(function (x) { return !PARAMS.prov || x.provincia === PARAMS.prov; }).map(function (x) { return x.nombre; }).sort(cmp) : [])
+      .concat(RAW.procesos.some(function (r) { return r._emp === 'Varios' && (!PARAMS.prov || r._prov === PARAMS.prov); }) ? ['Varios'] : []);
     se.innerHTML = '<option value="">Todos</option>' + emps.map(function (p) { return '<option>' + p.replace(/</g, '&lt;') + '</option>'; }).join('');
     se.value = emps.indexOf(PARAMS.emp) >= 0 ? PARAMS.emp : '';
     document.getElementById('f-limpiar').hidden = !hayFiltro();
@@ -441,7 +466,8 @@
       const filas = await api('docs?app=eq.' + APP + '&coleccion=eq.datos&select=id,data,actualizado,actualizado_por') || [];
       Object.keys(CACHE).forEach(function (k) { delete CACHE[k]; });
       filas.forEach(function (f) { if (FUENTES.indexOf(f.id) >= 0) RAW[f.id] = d3.csvParse(f.data.csv || ''); });
-      PLAZA = {}; (RAW.procesos || []).forEach(function (r) { PLAZA[r.clave] = normProv(r.plaza); });
+      await vincular();
+      PLAZA = {}; (RAW.procesos || []).forEach(function (r) { PLAZA[r.clave] = r._prov; });
       ['procesos', 'movimientos'].forEach(function (k) { (RAW[k] || []).forEach(function (r) { r.asignada = nombrePersona(r.asignada); }); });
       const falta = FUENTES.filter(function (k) { return !RAW[k]; });
       const ult = filas.map(function (f) { return f.actualizado; }).sort().pop();
