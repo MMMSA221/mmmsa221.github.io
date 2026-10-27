@@ -68,6 +68,20 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 .lt-tile-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
 .lt-tile-num { font-family: var(--lt-head); font-weight: 700; font-size: 2.1rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .lt-tile-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-height: 1.2em; }
+button.lt-tile { font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; }
+button.lt-tile:hover { border-color: var(--lt-orange); }
+button.lt-tile[aria-pressed="true"] { border-color: var(--lt-orange); box-shadow: 0 0 0 2px var(--lt-orange) inset; }
+.lt-hrow.lt-pickable { cursor: pointer; border-radius: 8px; padding: 2px 4px; margin: -2px -4px; transition: opacity 150ms ease-out, background 150ms ease-out; }
+.lt-hrow.lt-pickable:hover { background: var(--cds-chart-grid); }
+.lt-hrow.lt-pickable:focus-visible { outline: 3px solid var(--lt-orange); outline-offset: 2px; }
+.lt-hbars.has-pick .lt-hrow:not(.is-picked) { opacity: .4; }
+.lt-hrow.is-picked .lt-lbl { font-weight: 700; }
+.lt-filtros { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-body); }
+.lt-filtros-t { color: var(--color-fg-muted); }
+#filtros-chips { display: contents; }
+.lt-chip { font: inherit; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--lt-orange); background: var(--color-panel); color: var(--color-fg); cursor: pointer; }
+.lt-chip::after { content: "×"; font-weight: 700; color: var(--lt-orange); }
+.lt-limpiar { font: inherit; background: none; border: 0; color: var(--color-fg-muted); text-decoration: underline; cursor: pointer; min-height: 32px; }
 .lt-tile.is-bad .lt-tile-num { color: var(--color-bad); }
 .lt-tile.is-warn .lt-tile-num { color: var(--color-warn); }
 .lt-up { color: var(--color-bad); } .lt-down { color: var(--color-ok); }
@@ -75,7 +89,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
 .lt-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-md); align-content: start; min-width: 0; }
 .lt-card h2 { font-family: var(--lt-head); font-size: var(--cds-font-size-heading); font-weight: 700; margin: 0; }
 .lt-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
-.lt-hbars { display: grid; gap: var(--cds-gap-sm); min-height: 7rem; }
+.lt-hbars { display: grid; gap: var(--cds-gap-sm); min-height: 7rem; align-content: start; }
 .lt-hrow { display: grid; grid-template-columns: minmax(7rem, 11rem) 1fr 2.5rem; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-body); }
 .lt-hrow .lt-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lt-track { height: 14px; background: var(--cds-chart-grid); border-radius: 7px; overflow: hidden; }
@@ -166,23 +180,29 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
   <!-- ACTIVAS -->
   <section class="lt-page" id="activas" role="tabpanel" aria-labelledby="tab-activas">
     <div class="lt-tiles">
-      <div class="lt-tile" id="t-activas"><span class="lt-tile-label">En gestión</span><span class="lt-tile-num" data-source="resumen" data-field="activas">—</span><span class="lt-tile-sub" data-source="resumen" data-field="delta_activas">—</span></div>
-      <div class="lt-tile is-bad" id="t-vencidas"><span class="lt-tile-label">Fuera de plazo</span><span class="lt-tile-num" data-source="resumen" data-field="vencidas">—</span><span class="lt-tile-sub" data-source="resumen" data-field="delta_vencidas">—</span></div>
-      <div class="lt-tile is-warn" id="t-porvencer"><span class="lt-tile-label">Vencen en ≤ 7 días</span><span class="lt-tile-num" data-source="resumen" data-field="por_vencer">—</span><span class="lt-tile-sub">Atender esta semana</span></div>
-      <div class="lt-tile" id="t-enplazo"><span class="lt-tile-label">En plazo</span><span class="lt-tile-num" data-source="resumen" data-field="en_plazo">—</span><span class="lt-tile-sub">Más de 7 días de margen</span></div>
-      <div class="lt-tile" id="t-sinfecha"><span class="lt-tile-label">Sin fecha RFQ</span><span class="lt-tile-num" data-source="resumen" data-field="sin_fecha">—</span><span class="lt-tile-sub">No se puede medir el plazo</span></div>
+      <button type="button" class="lt-tile lt-pick" id="t-activas" data-sit="" aria-pressed="false"><span class="lt-tile-label">En gestión</span><span class="lt-tile-num" data-source="resumen" data-field="activas">—</span><span class="lt-tile-sub" data-source="resumen" data-field="delta_activas">—</span></button>
+      <button type="button" class="lt-tile lt-pick is-bad" id="t-vencidas" data-sit="Vencida" aria-pressed="false"><span class="lt-tile-label">Fuera de plazo</span><span class="lt-tile-num" data-source="resumen" data-field="vencidas">—</span><span class="lt-tile-sub" data-source="resumen" data-field="delta_vencidas">—</span></button>
+      <button type="button" class="lt-tile lt-pick is-warn" id="t-porvencer" data-sit="Por vencer" aria-pressed="false"><span class="lt-tile-label">Vencen en ≤ 7 días</span><span class="lt-tile-num" data-source="resumen" data-field="por_vencer">—</span><span class="lt-tile-sub">Atender esta semana</span></button>
+      <button type="button" class="lt-tile lt-pick" id="t-enplazo" data-sit="En plazo" aria-pressed="false"><span class="lt-tile-label">En plazo</span><span class="lt-tile-num" data-source="resumen" data-field="en_plazo">—</span><span class="lt-tile-sub">Más de 7 días de margen</span></button>
+      <button type="button" class="lt-tile lt-pick" id="t-sinfecha" data-sit="sin" aria-pressed="false"><span class="lt-tile-label">Sin fecha RFQ</span><span class="lt-tile-num" data-source="resumen" data-field="sin_fecha">—</span><span class="lt-tile-sub">No se puede medir el plazo</span></button>
+    </div>
+
+    <div class="lt-filtros" id="filtros" hidden>
+      <span class="lt-filtros-t">Filtrando:</span>
+      <span id="filtros-chips"></span>
+      <button type="button" class="lt-limpiar" id="f-limpiar">Limpiar filtros</button>
     </div>
 
     <div class="lt-grid">
       <div class="lt-card" id="card-etapas">
         <h2>¿En qué etapa están?</h2>
-        <p class="lt-note">Licitaciones en gestión agrupadas por etapa del proceso.</p>
-        <div class="lt-hbars" id="ch-etapas" data-source="por_etapa"></div>
+        <p class="lt-note">Licitaciones en gestión agrupadas por etapa del proceso. Tocá una barra para filtrar.</p>
+        <div class="lt-hbars" id="ch-etapas"></div>
       </div>
       <div class="lt-card" id="card-resp">
         <h2>¿Quién tiene la pelota?</h2>
-        <p class="lt-note">Área que tiene que mover el estado actual (según el paréntesis del estado).</p>
-        <div class="lt-hbars" id="ch-resp" data-source="por_responsable"></div>
+        <p class="lt-note">Área que tiene que mover el estado actual (según el paréntesis del estado). Tocá una barra para filtrar.</p>
+        <div class="lt-hbars" id="ch-resp"></div>
       </div>
     </div>
 
@@ -196,7 +216,7 @@ html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); fon
         <label class="lt-field" for="f-semaf">Situación
           <select id="f-semaf">
             <option value="">Todas</option>
-            <option>Vencida</option><option>Por vencer</option><option>En plazo</option><option>Sin fecha RFQ</option><option>Sin plazo</option>
+            <option value="Vencida">Fuera de plazo</option><option value="Por vencer">Vencen en ≤ 7 días</option><option value="En plazo">En plazo</option><option value="sin">Sin fecha RFQ o sin plazo</option>
           </select>
         </label>
         <label class="lt-field" for="f-q-act">Buscar
@@ -520,7 +540,8 @@ dash.calc('por_categoria', {
 
   /* filtros */
   $('#f-pais').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (b) dash.setParams({ pais: b.dataset.v }); });
-  ['#f-resp', '#f-semaf', '#f-sem', '#f-tipo', '#f-est'].forEach((s) => $(s).addEventListener('change', draw));
+  ['#f-resp', '#f-sem', '#f-tipo', '#f-est'].forEach((s) => $(s).addEventListener('change', draw));
+  $('#f-semaf').addEventListener('change', () => { F.sit = $('#f-semaf').value; draw(); });
   ['#f-q-act', '#f-q'].forEach((s) => $(s).addEventListener('input', draw));
 
   /* pestañas */
@@ -531,6 +552,52 @@ dash.calc('por_categoria', {
     dash.setLink(id); draw();
   };
   $('.lt-tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
+
+  /* filtros cruzados de la pestaña Activas */
+  const F = { sit: '', etapa: '', resp: '' };
+  const SIT_TXT = { 'Vencida': 'Fuera de plazo', 'Por vencer': 'Vencen en ≤ 7 días', 'En plazo': 'En plazo', 'sin': 'Sin fecha RFQ o sin plazo' };
+  const okSit = (r) => !F.sit || (F.sit === 'sin' ? (r.semaforo === 'Sin fecha RFQ' || r.semaforo === 'Sin plazo') : r.semaforo === F.sit);
+  const setF = (k, v) => { F[k] = F[k] === v ? '' : v; draw(); };
+  document.querySelectorAll('#activas button.lt-tile').forEach((b) => b.addEventListener('click', () => { if (!b.dataset.sit) { F.sit = F.etapa = F.resp = ''; draw(); } else setF('sit', b.dataset.sit); }));
+  $('#f-limpiar').addEventListener('click', () => { F.sit = F.etapa = F.resp = ''; draw(); });
+  $('#filtros-chips').addEventListener('click', (e) => { const c = e.target.closest('button[data-k]'); if (c) { F[c.dataset.k] = ''; draw(); } });
+  const drawFiltros = () => {
+    document.querySelectorAll('#activas button.lt-tile').forEach((b) => b.setAttribute('aria-pressed', String(!!b.dataset.sit && b.dataset.sit === F.sit)));
+    const box = $('#filtros-chips'); box.replaceChildren();
+    [['sit', F.sit && SIT_TXT[F.sit]], ['etapa', F.etapa && 'Etapa: ' + F.etapa], ['resp', F.resp && 'Responsable: ' + F.resp]].forEach(([k, t]) => {
+      if (!t) return; const c = document.createElement('button'); c.type = 'button'; c.className = 'lt-chip'; c.dataset.k = k; c.textContent = t; c.setAttribute('aria-label', 'Quitar filtro ' + t); box.appendChild(c);
+    });
+    $('#filtros').hidden = !(F.sit || F.etapa || F.resp);
+  };
+  const pickBars = (el, rows, key, fkey, order) => {
+    el.replaceChildren();
+    const cnt = {};
+    rows.forEach((r) => { const k = r[key] || '—'; cnt[k] = (cnt[k] || 0) + 1; });
+    if (F[fkey] && !(F[fkey] in cnt)) cnt[F[fkey]] = 0;
+    let items = Object.entries(cnt);
+    items = order ? items.sort((a, b) => a[0].localeCompare(b[0])) : items.sort((a, b) => b[1] - a[1]);
+    el.classList.toggle('has-pick', !!F[fkey]);
+    if (!items.length) { const p = document.createElement('div'); p.className = 'lt-empty'; p.textContent = 'No hay licitaciones con estos filtros.'; el.appendChild(p); return; }
+    const max = d3.max(items, (x) => x[1]) || 1;
+    items.forEach(([k, n]) => {
+      const row = document.createElement('div'); row.className = 'lt-hrow lt-pickable' + (F[fkey] === k ? ' is-picked' : '');
+      row.tabIndex = 0; row.setAttribute('role', 'button'); row.setAttribute('aria-pressed', String(F[fkey] === k));
+      const l = document.createElement('span'); l.className = 'lt-lbl'; l.textContent = k; l.title = k;
+      const t = document.createElement('div'); t.className = 'lt-track';
+      const f = document.createElement('div'); f.className = 'lt-fill'; f.style.width = (n / max * 100) + '%'; t.appendChild(f);
+      const v = document.createElement('span'); v.className = 'lt-val'; v.textContent = n;
+      row.append(l, t, v);
+      row.addEventListener('click', () => setF(fkey, k));
+      row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setF(fkey, k); } });
+      el.appendChild(row);
+    });
+  };
+  const drawCruce = () => {
+    const d = dash.data('procesos'); if (d.status !== 'ok') return;
+    const act = d.data.filter((r) => r.activa === 'si' && enPais(r) && okSit(r));
+    pickBars($('#ch-etapas'), act.filter((r) => !F.resp || r.responsable_etapa === F.resp), 'etapa', 'etapa', true);
+    pickBars($('#ch-resp'), act.filter((r) => !F.etapa || r.etapa === F.etapa), 'responsable_etapa', 'resp');
+  };
 
   /* barras horizontales */
   const hbars = (el, src, labelKey, order) => {
@@ -634,8 +701,9 @@ dash.calc('por_categoria', {
     const d = dash.data('procesos'); if (d.status !== 'ok') return;
     const act = d.data.filter((r) => r.activa === 'si' && enPais(r));
     setOptions($('#f-resp'), [...new Set(act.map((r) => r.asignada))].sort(), 'Todas las personas');
-    const resp = $('#f-resp').value, sem = $('#f-semaf').value, q = $('#f-q-act').value.trim().toLowerCase();
-    const rows = act.filter((r) => (!resp || r.asignada === resp) && (!sem || r.semaforo === sem) &&
+    $('#f-semaf').value = F.sit;
+    const resp = $('#f-resp').value, q = $('#f-q-act').value.trim().toLowerCase();
+    const rows = act.filter((r) => (!resp || r.asignada === resp) && okSit(r) && (!F.etapa || r.etapa === F.etapa) && (!F.resp || r.responsable_etapa === F.resp) &&
       (!q || [r.detalle, r.proyecto, r.plaza, r.solped, r.categoria, r.estado].join(' ').toLowerCase().includes(q)))
       .sort((a, b) => (ORD[a.semaforo] - ORD[b.semaforo]) || (Number(a.dias_restantes) - Number(b.dias_restantes)));
     if (!rows.length) empty(tb, 8, 'Ninguna licitación coincide con los filtros.');
@@ -763,7 +831,7 @@ dash.calc('por_categoria', {
   function draw() {
     document.querySelectorAll('#f-pais button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === pais())));
     drawResumen();
-    if (tab === 'activas') { hbars($('#ch-etapas'), 'por_etapa', 'etapa', true); hbars($('#ch-resp'), 'por_responsable', 'responsable'); drawActivas(); }
+    if (tab === 'activas') { drawFiltros(); drawCruce(); drawActivas(); }
     if (tab === 'semana') { drawEvol(); drawMov(); }
     if (tab === 'historico') { drawAnio(); drawCat(); }
     if (tab === 'plan') drawPlan();
