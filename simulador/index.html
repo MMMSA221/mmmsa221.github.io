@@ -117,7 +117,8 @@ svg text{fill:var(--muted);font-family:var(--f-body);font-size:11px}
 svg .grid{stroke:var(--line-2)}
 .macro-bar{cursor:pointer}
 .macro-bar:hover .hit{fill:var(--chip)}
-.readout{font-size:12px;color:var(--fg-2);min-height:18px}
+.readout{font-size:16px;color:var(--fg-2);min-height:24px;margin-top:8px}
+.readout b{font-size:18px;color:var(--fg)}
 
 /* Gantt */
 .gantt-tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -203,7 +204,10 @@ footer{padding-block:16px 32px;font-size:12px;color:var(--muted)}
 .cac{display:inline-block;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:2px 8px;margin-left:6px;color:var(--fg-2);vertical-align:middle}
 .bd-ctl{display:flex;align-items:center;gap:8px;font-size:13px}
 .bd-ctl select{height:36px}
-.bd-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--fg-2);margin:8px 0 0}
+.bd-legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;color:var(--fg-2);margin:10px 0 0;line-height:1.4}
+.bd-legend b{color:var(--fg);font-weight:600}
+.bd-legend i{width:12px!important;height:12px!important}
+.legmore{background:none;border:0;color:var(--orange-ink);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;padding:0}
 .bd-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .mdet{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
 .mdet h3{font-family:var(--f-display);font-size:17px;margin:0 0 8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
@@ -248,7 +252,7 @@ footer{border-top:1px solid var(--line)}
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 f</span></span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 h</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><span class="role" id="role">Visualizador</span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
@@ -272,6 +276,7 @@ footer{border-top:1px solid var(--line)}
       <button class="btn sec" id="btnSaveOver" type="button" hidden>Guardar cambios</button>
       <button class="btn ghost" id="btnReset" type="button">Volver a la base</button>
       <button class="btn danger" id="btnDel" type="button" hidden>Borrar</button>
+      <button class="btn ghost" id="btnAdm" type="button" hidden>Escenarios guardados</button>
       <div class="escmeta" id="escMeta"></div>
     </div>
     <div class="spacer" style="flex:1"></div>
@@ -289,6 +294,10 @@ footer{border-top:1px solid var(--line)}
     <span>Tenés cambios sin guardar. Si seguís, se pierden.</span>
     <button class="btn danger" id="discardOk" type="button">Descartar y seguir</button>
     <button class="btn ghost" id="discardCancel" type="button">Volver</button>
+  </div>
+  <div class="inline-form" id="admBox" hidden style="flex-direction:column;align-items:stretch">
+    <div style="display:flex;align-items:baseline;gap:12px"><b>Escenarios guardados</b><span class="note" id="admNote"></span><span class="spacer" style="flex:1"></span><button class="btn ghost" id="admClose" type="button">Cerrar</button></div>
+    <div class="gwrap"><table class="chg" id="admTable"></table></div>
   </div>
   <div class="inline-form" id="delForm" hidden>
     <span>¿Borrar el escenario <b id="delName"></b>? No se puede deshacer.</span>
@@ -392,7 +401,7 @@ footer{border-top:1px solid var(--line)}
       id: id,
       set: async function (data) { await api('docs?on_conflict=app,coleccion,id', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: { app: APP, coleccion: col, id: id, data: data } }); avisar(); },
       update: async function (parcial) { const r = await api(q(col, id) + '&select=data'); const prev = r && r[0] ? r[0].data : {}; await this.set(Object.assign({}, prev, parcial)); },
-      delete: async function () { await api(q(col, id), { method: 'DELETE', prefer: 'return=minimal' }); avisar(); },
+      delete: async function () { const r = await api(q(col, id), { method: 'DELETE', prefer: 'return=representation' }); if (!r || !r.length) { const ex = await api(q(col, id) + '&select=id'); if (ex && ex.length) throw new Error('la base de datos no permitió borrarlo (falta el permiso de borrado para editores)'); } avisar(); },
       onSnapshot: function (cb, err) {
         let ultimo = null;
         const f = async function () { const r = await api(q(col, id) + '&select=data'); const k = JSON.stringify(r); if (k === ultimo) return; ultimo = k; cb({ exists: !!(r && r[0]), data: function () { return r && r[0] ? r[0].data : undefined; } }); };
@@ -565,17 +574,16 @@ let lastMonthly=null;
 S.dim='t';const MAXCAT=7;
 const DIMN={t:'Tipo de obra',p:'Emprendimiento',pp:'Proyecto de Planner',pr:'Provincia',o:'Obra'};
 const catOf=o=>{const v=S.dim==='t'?o.t:S.dim==='p'?o.em:S.dim==='pp'?o.p:S.dim==='pr'?o.pr:o.o;return v||'Sin dato'};
-function buildBD(list){ // categorías ordenadas por inversión simulada total; las que sobran van a "Otros"
+// Color por categoría: las 7 primeras con la paleta de marca; el resto se genera con tonos bien separados
+function colN(i){if(i<7)return 'var(--c'+(i+1)+')';const h=Math.round((i*137.508)%360),l=[48,62,38][i%3],c=[62,48,70][Math.floor(i/3)%3];return `hsl(${h} ${c}% ${l}%)`}
+function buildBD(list){ // todas las categorías, ordenadas por inversión simulada total (sin agrupar en "Otros")
   if(!S.dim)return null;const tot=new Map();
-  list.forEach(o=>{const k=catOf(o);const p=plan(o,S.changes);tot.set(k,(tot.get(k)||0)+(p.d?o.m:0))});
-  const cats=[...tot.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
-  const top=cats.length>MAXCAT+1?cats.slice(0,MAXCAT):cats;const other=cats.length>top.length;
-  const col={};top.forEach((c,i)=>col[c]='var(--c'+(i+1)+')');
-  const key=o=>{const c=catOf(o);return col[c]?c:'Otros'};
-  const order=other?top.concat(['Otros']):top;if(other)col['Otros']='var(--c8)';const otherN=cats.length-top.length;
+  list.forEach(o=>{const k=catOf(o);tot.set(k,(tot.get(k)||0)+o.m)});
+  const order=[...tot.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const col={};order.forEach((c,i)=>col[c]=colN(i));
   const sim=new Map();order.forEach(c=>sim.set(c,new Map()));
-  list.forEach(o=>{const p=plan(o,S.changes),d=distribuir(o,p.d),m=sim.get(key(o));d.forEach((v,k)=>m.set(p.s+k,(m.get(p.s+k)||0)+v))});
-  return {order,col,sim,key,otherN};
+  list.forEach(o=>{const p=plan(o,S.changes),d=distribuir(o,p.d),m=sim.get(catOf(o));d.forEach((v,k)=>m.set(p.s+k,(m.get(p.s+k)||0)+v))});
+  return {order,col,sim,key:catOf};
 }
 function stack(bd,months){ // [{c,v}] para un conjunto de meses
   return bd.order.map(c=>{const m=bd.sim.get(c);let v=0;months.forEach(x=>v+=m.get(x)||0);return {c,v}}).filter(x=>x.v>0.5);
@@ -588,14 +596,21 @@ function curva(p){if(p.length<2)return '';const n=p.length,dx=[],m=[],t=[];
   let d='M'+p[0][0]+' '+p[0][1];for(let i=0;i<n-1;i++){const h=dx[i]/3;d+=' C'+(p[i][0]+h)+' '+(p[i][1]+t[i]*h)+' '+(p[i+1][0]-h)+' '+(p[i+1][1]-t[i+1]*h)+' '+p[i+1][0]+' '+p[i+1][1]}return d}
 function stackRects(parts,x,w,sc,y0,lbl){let acc=0,h='';const zero=sc(0);
   parts.forEach(p=>{const top=sc(acc+p.v),bot=sc(acc);h+=`<rect x="${x}" y="${top}" width="${w}" height="${Math.max(0,bot-top-(bot-top>3?1:0))}" fill="${S.bd.col[p.c]}"><title>${esc(lbl)} · ${esc(p.c)}: ${fmtM(p.v)}</title></rect>`;acc+=p.v});return h}
+// Leyenda: solo lo que tiene inversión en el año foco, de mayor a menor, con su monto. Las primeras 20 a la vista.
+S.legAll=false;
 function renderLegend(){const el=$('bdLegend');if(!S.bd){el.innerHTML='';return}
-  el.innerHTML=S.bd.order.map(c=>`<span><i style="background:${S.bd.col[c]}"></i>${esc(c)}${c==='Otros'?` (${S.bd.otherN} más: tocá un mes para verlos separados)`:''}</span>`).join('')}
+  const ms=Array.from({length:12},(_,k)=>S.year*12+k);const it=stack(S.bd,ms).sort((a,b)=>b.v-a.v);
+  if(!it.length){el.innerHTML='<span class="note">Sin inversión en '+S.year+'.</span>';return}
+  const MAX=20,vis=S.legAll?it:it.slice(0,MAX);
+  el.innerHTML=vis.map(x=>`<span><i style="background:${S.bd.col[x.c]}"></i>${esc(x.c)} <b class="num">${fmtM(x.v)}</b></span>`).join('')+
+    (it.length>MAX?`<button type="button" class="legmore" id="legMore">${S.legAll?'Ver menos':'Ver las '+it.length+' ('+(it.length-MAX)+' más)'}</button>`:'');
+  const b=$('legMore');if(b)b.onclick=()=>{S.legAll=!S.legAll;renderLegend()}}
 function renderDetail(){const el=$('mDetail');if(S.selMonth==null||!lastMonthly){el.hidden=true;return}
   const m=lastMonthly.ms[S.selMonth].m,rc=refCh();let list=filtered();
   const rows=[];list.forEach(o=>{const p=plan(o,S.changes),r=plan(o,rc);const sv=(m>=p.s&&m<p.s+p.d)?distribuir(o,p.d)[m-p.s]:0,bv=(m>=r.s&&m<r.s+r.d)?distribuir(o,r.d)[m-r.s]:0;if(sv>0.5||bv>0.5)rows.push({o,sv,bv})});
   const tot=rows.reduce((a,x)=>a+x.sv,0),totB=rows.reduce((a,x)=>a+x.bv,0);
   const g=new Map();const kf=S.bd?catOf:(()=> 'Todas las obras');rows.forEach(x=>{const k=kf(x.o);if(!g.has(k))g.set(k,[]);g.get(k).push(x)});
-  const sumOf=c=>g.get(c).reduce((a,x)=>a+x.sv,0);const order=[...g.keys()].sort((a,b)=>sumOf(b)-sumOf(a));const colOf=c=>S.bd?(S.bd.col[c]||S.bd.col['Otros']):'';
+  const sumOf=c=>g.get(c).reduce((a,x)=>a+x.sv,0);const order=[...g.keys()].sort((a,b)=>sumOf(b)-sumOf(a));const colOf=c=>S.bd?(S.bd.col[c]||'var(--c8)'):'';
   let h=`<h3>Composición de ${mLabel(m)} <span class="note">Simulación ${fmtM(tot)} · ${esc(refName())} ${fmtM(totB)} · ${rows.length} obras${S.bd?' · por '+DIMN[S.dim].toLowerCase():''}</span><span class="spacer" style="flex:1"></span><button class="x" type="button" id="mDetClose">Cerrar</button></h3>`;
   if(!rows.length)h+='<p class="note">No hay inversión en este mes con los filtros actuales.</p>';
   else{h+=`<table><thead><tr><th>${S.bd&&S.dim!=='o'?esc(DIMN[S.dim])+' / obra':'Obra'}</th><th class="r">Simulación</th><th class="r">% del mes</th><th class="r">${esc(refName())}</th><th class="r">Δ</th></tr></thead><tbody>`;
@@ -730,6 +745,7 @@ function renderEsc(){
   $('btnSave').hidden=!S.canWrite;$('btnSave').disabled=!hasChanges();
   $('btnSaveOver').hidden=!(S.canWrite&&S.esc&&S.dirty);
   $('btnDel').hidden=!(S.canWrite&&S.esc);
+  $('btnAdm').hidden=!S.escList.length;$('btnAdm').textContent='Escenarios guardados ('+S.escList.length+')';renderAdm();
   $('btnReset').disabled=!hasChanges()&&!S.esc;
   const role=$('role');role.textContent=S.canWrite?'Editor':'Visualizador';role.classList.toggle('ed',S.canWrite);
   $('importLbl').hidden=!S.canWrite;
@@ -757,9 +773,21 @@ $('saveOk').onclick=async()=>{const n=$('escName').value.trim();const err=$('sav
   try{const ref=S.db.collection('escenarios').doc();const now=new Date().toISOString();await ref.set({nombre:n,cambios:S.changes,autor:S.uid||null,creado:now,actualizado:now});
     S.esc=ref.id;S.dirty=false;$('saveForm').hidden=true;toast('Escenario “'+n+'” guardado');render()}catch(e){writeFail(e)}};
 $('btnSaveOver').onclick=async()=>{if(!S.db||!S.esc)return;try{await S.db.doc('escenarios/'+S.esc).update({cambios:S.changes,actualizado:new Date().toISOString(),autor:S.uid||null});S.dirty=false;toast('Cambios guardados');render()}catch(e){writeFail(e)}};
-$('btnDel').onclick=()=>{const sc=S.escList.find(x=>x.id===S.esc);if(!sc)return;$('delName').textContent=sc.nombre;$('delForm').hidden=false};
-$('delCancel').onclick=()=>$('delForm').hidden=true;
-$('delOk').onclick=async()=>{try{await S.db.doc('escenarios/'+S.esc).delete();$('delForm').hidden=true;S.esc=null;S.changes={};S.hist=[];S.dirty=false;toast('Escenario borrado');render()}catch(e){writeFail(e)}};
+let delId=null;
+function askDel(id){const sc=S.escList.find(x=>x.id===id);if(!sc)return;delId=id;$('delName').textContent=sc.nombre;$('delForm').hidden=false;$('delForm').scrollIntoView({block:'nearest'})}
+$('btnDel').onclick=()=>askDel(S.esc);
+function renderAdm(){const box=$('admBox');if(box.hidden)return;const L=S.escList;
+  $('admNote').textContent=L.length?L.length+(L.length===1?' escenario':' escenarios'):'';
+  $('admTable').innerHTML=L.length?'<thead><tr><th>Nombre</th><th>Obras movidas</th><th>Actualizado</th><th></th></tr></thead><tbody>'+L.map(e=>{const n=Object.keys(e.cambios||{}).length,who=e.autor&&S.names[e.autor]?S.names[e.autor]:(e.autor||''),when=e.actualizado?new Date(e.actualizado).toLocaleDateString('es-AR'):'';
+    return `<tr><td><b>${esc(e.nombre)}</b>${S.esc===e.id?' <span class="pill mod">abierto</span>':''}</td><td class="num">${n}</td><td>${when}${who?' · '+esc(who):''}</td><td style="text-align:right;white-space:nowrap"><button class="btn ghost" type="button" data-open="${esc(e.id)}">Abrir</button> ${S.canWrite?`<button class="btn danger" type="button" data-del="${esc(e.id)}">Borrar</button>`:''}</td></tr>`}).join('')+'</tbody>':'<tbody><tr><td class="note">No hay escenarios guardados.</td></tr></tbody>'}
+$('btnAdm').onclick=()=>{$('admBox').hidden=false;renderAdm()};
+$('admClose').onclick=()=>{$('admBox').hidden=true};
+$('admTable').addEventListener('click',e=>{const o=e.target.closest('[data-open]'),d=e.target.closest('[data-del]');if(o){const id=o.dataset.open;guard(()=>loadEsc(id))}else if(d)askDel(d.dataset.del)});
+$('delCancel').onclick=()=>{$('delForm').hidden=true;delId=null};
+$('delOk').onclick=async()=>{const id=delId||S.esc;if(!id)return;const nom=(S.escList.find(x=>x.id===id)||{}).nombre||'';
+  try{await S.db.doc('escenarios/'+id).delete();$('delForm').hidden=true;delId=null;S.escList=S.escList.filter(x=>x.id!==id);
+    if(S.esc===id){S.esc=null;S.changes={};S.hist=[];S.dirty=false}if(S.ref===id)S.ref=null;toast('Escenario “'+nom+'” borrado');render()}
+  catch(e){$('delForm').hidden=true;toast('No se pudo borrar'+(e&&e.message?': '+e.message:''))}};
 function writeFail(e){if(e&&e.code==='invalid_argument'){S.canWrite=false;render();toast('Tu perfil es de solo lectura: podés simular, pero no guardar.')}else if(e&&e.code==='quota_exceeded')toast('Se llegó al límite de almacenamiento. Borrá escenarios viejos.');else toast('No se pudo guardar'+(e&&e.message?': '+e.message:'. Probá de nuevo en unos segundos.'))}
 
 // ---------- objetivo ----------
