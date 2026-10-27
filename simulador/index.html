@@ -196,6 +196,11 @@ footer{padding-block:16px 32px;font-size:12px;color:var(--muted)}
 :root[data-theme="dark"]{--c2:#7C97E0;--c3:#C66BEA;--c4:#3FB8A8;--c5:#E3C24F;--c6:#F07AA3;--c7:#9AA8BA;--c8:#6A6A80}
 .emp-rev{color:var(--warn);font-weight:600}.emp-ok{color:var(--muted)}
 #empTable select{height:36px;max-width:360px;width:100%}
+.paises{display:flex;gap:0;border-bottom:1px solid var(--line);margin:4px 0 14px}
+.paises button{height:44px;padding:0 18px;border:0;background:none;cursor:pointer;font:inherit;font-family:var(--f-display);font-weight:700;font-size:16px;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.paises button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--orange)}
+.paises button:hover{color:var(--fg)}
+.cac{display:inline-block;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:2px 8px;margin-left:6px;color:var(--fg-2);vertical-align:middle}
 .bd-ctl{display:flex;align-items:center;gap:8px;font-size:13px}
 .bd-ctl select{height:36px}
 .bd-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--fg-2);margin:8px 0 0}
@@ -243,11 +248,16 @@ footer{border-top:1px solid var(--line)}
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 e</span></span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 f</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><span class="role" id="role">Visualizador</span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
-<div class="wrap titulo-sim"><h1>Plan de inversión</h1><p>Obras de Natania en pesos constantes (CAC). Mové obras en el tiempo y compará contra la base de Planner.</p></div>
+<div class="wrap titulo-sim"><h1>Plan de inversión</h1>
+  <nav class="paises" role="tablist" aria-label="País">
+    <button type="button" role="tab" id="tabAR" data-pais="AR" aria-selected="true">Natania Argentina</button>
+    <button type="button" role="tab" id="tabPY" data-pais="PY" aria-selected="false">Natania Paraguay</button>
+  </nav>
+  <p id="subtit"></p></div>
 
 
 <main class="wrap">
@@ -334,7 +344,7 @@ footer{border-top:1px solid var(--line)}
   </section>
 
   <section class="panel">
-    <div class="ph"><h2 id="mTitle">Flujo mensual</h2><label class="bd-ctl" for="selDim">Desglosar por <select id="selDim"><option value="">Sin desglose</option><option value="t" selected>Tipo de obra</option><option value="p">Emprendimiento</option><option value="pp">Proyecto de Planner</option><option value="pr">Provincia</option><option value="o">Obra</option></select></label><span class="spacer"></span>
+    <div class="ph"><h2 id="mTitle">Flujo mensual</h2><label class="bd-ctl" for="selDim">Desglosar por <select id="selDim"><option value="">Sin desglose</option><option value="t" selected>Tipo de obra</option><option value="p">Emprendimiento</option><option value="pr">Provincia</option><option value="o">Obra</option></select></label><span class="spacer"></span>
       <div class="legend"><span><i style="background:var(--sim)"></i>Simulación</span><span><i class="line"></i><span class="refName">Base (Planner)</span></span><span><i class="dash"></i>Objetivo mensual (anual ÷ 12)</span></div></div>
     <div class="chartbox"><svg id="monthly" role="img" aria-label="Flujo mensual del año foco"></svg></div>
     <div class="bd-legend" id="bdLegend"></div>
@@ -359,7 +369,7 @@ footer{border-top:1px solid var(--line)}
     <div class="gwrap"><table class="gt" id="gt"></table></div>
   </section>
 
-  <footer>Reparto actual: partes iguales por mes calendario tocado (prototipo). Próxima versión: curva de inversión por obra. Montos en pesos constantes al último CAC publicado · Fuente: Planner Premium (Costos Obras).</footer>
+  <footer id="pie">Reparto actual: partes iguales por mes calendario tocado (prototipo). Próxima versión: curva de inversión por obra. Montos en pesos constantes al último CAC publicado · Fuente: Planner Premium (Costos Obras).</footer>
 </main>
 <div class="toast" id="toast" hidden></div>
 
@@ -424,9 +434,12 @@ const today=new Date(); const NOW=today.getFullYear()*12+today.getMonth();
 const $=id=>document.getElementById(id);
 const nf=(v,d)=>v.toLocaleString('es-AR',{maximumFractionDigits:d,minimumFractionDigits:0});
 // Unidades: millones (M) y miles de millones como "mil M"
-const fmtM=v=>{const m=v/1e6, a=Math.abs(m); return '$ '+nf(m,a>=100?0:1)+' M'};
-const fmtBig=v=>Math.abs(v)>=1e9?'$ '+nf(v/1e9,1)+' mil M':fmtM(v);
-const fmt$=v=>'$ '+Math.round(v).toLocaleString('es-AR');
+// Moneda: Argentina en pesos constantes (CAC); Paraguay en dólares
+const CAC_BASE='agosto 2026';let PAIS='AR';try{PAIS=localStorage.getItem('sim-pais')==='PY'?'PY':'AR'}catch(e){}
+const CUR=()=>PAIS==='PY'?'US$ ':'$ ';
+const fmtM=v=>{const m=v/1e6, a=Math.abs(m); return CUR()+nf(m,a>=100?0:a>=1?1:2)+' M'};
+const fmtBig=v=>Math.abs(v)>=1e9?CUR()+nf(v/1e9,1)+' mil M':fmtM(v);
+const fmt$=v=>CUR()+Math.round(v).toLocaleString('es-AR');
 const mLabel=i=>MES[((i%12)+12)%12]+'-'+String(Math.floor(i/12)).slice(2);
 const mi=s=>{const [y,m]=s.split('-').map(Number);return y*12+m-1};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -519,7 +532,7 @@ function renderChanges(list){
   $('chgPanel').hidden=!rows.length;if(!rows.length)return;
   const yrs=[];for(let y=Y0;y<=Y1;y++){let d=0;rows.forEach(o=>d+=yearOf(o,S.changes,y)-yearOf(o,rc,y));if(Math.abs(d)>0.5)yrs.push({y,d})}
   $('chgNote').textContent=rows.length+(rows.length===1?' obra distinta':' obras distintas')+' a '+refName();
-  $('chgYears').innerHTML=yrs.map(x=>`<div class="fy"><span class="lbl">${x.y}</span><b class="num">${x.d>0?'+':'−'}${fmtBig(Math.abs(x.d)).replace('$ ','$ ')}</b><span class="note">${x.d>0?'entra inversión':'sale inversión'}</span></div>`).join('')||'<span class="note">Los cambios no mueven plata entre años.</span>';
+  $('chgYears').innerHTML=yrs.map(x=>`<div class="fy"><span class="lbl">${x.y}</span><b class="num">${x.d>0?'+':'−'}${fmtBig(Math.abs(x.d))}</b><span class="note">${x.d>0?'entra inversión':'sale inversión'}</span></div>`).join('')||'<span class="note">Los cambios no mueven plata entre años.</span>';
   let h='<thead><tr><th>Obra</th><th>Inicio</th><th>Plazo</th><th>Mueve entre años</th></tr></thead><tbody>';
   rows.sort((a,b)=>a.p.localeCompare(b.p,'es')).forEach(o=>{const a=plan(o,rc),b=plan(o,S.changes);
     const mv=[];for(let y=Y0;y<=Y1;y++){const d=yearOf(o,S.changes,y)-yearOf(o,rc,y);if(Math.abs(d)>0.5)mv.push(`${y} ${d>0?'+':'−'}${fmtM(Math.abs(d))}`)}
@@ -529,7 +542,7 @@ function renderChanges(list){
 
 // ---------- gráficos ----------
 function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v)));const n=v/p;return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p}
-function axisLbl(v){if(!v)return '0';if(v>=1e9)return nf(v/1e9,1)+' mil M';return nf(v/1e6,0)+' M'}
+function axisLbl(v){if(!v)return '0';if(v>=1e9)return nf(v/1e9,1)+' mil M';return nf(v/1e6,v<1e7?1:0)+' M'}
 function chartW(svg){return Math.max(300,svg.parentElement.clientWidth)}
 function renderMacro(refS,simS){
   const svg=$('macro'),W=chartW(svg),H=200,pl=W<500?52:72,pr=8,pt=12,pb=28;
@@ -724,7 +737,7 @@ function renderEsc(){
   // metadatos del escenario
   const m=$('escMeta');const sc=S.escList.find(x=>x.id===S.esc);
   if(!sc){m.textContent=S.canWrite?'':'Modo visualizador: podés simular libremente; guardar está reservado a los editores.';return}
-  const n=Object.keys(sc.cambios||{}).length,miss=Object.keys(sc.cambios||{}).filter(id=>!OBRAS.find(o=>o.id===id)).length;
+  const n=Object.keys(sc.cambios||{}).length,miss=Object.keys(sc.cambios||{}).filter(id=>!(S.raw||OBRAS).find(o=>o.id===id)).length;
   const who=sc.autor&&S.names[sc.autor]?S.names[sc.autor]:'';
   const when=sc.actualizado?new Date(sc.actualizado).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
   m.innerHTML=`${n} ${n===1?'obra movida':'obras movidas'}${who?' · por '+esc(who):''}${when?' · actualizado '+when:''}${miss?` · <span class="warnx">${miss} ${miss===1?'obra ya no está':'obras ya no están'} en la base cargada y no se aplican</span>`:''}`;
@@ -752,11 +765,12 @@ function writeFail(e){if(e&&e.code==='invalid_argument'){S.canWrite=false;render
 // ---------- objetivo ----------
 function renderObj(){const y=S.year;$('objLbl').textContent='Presupuesto objetivo anual '+y;const v=S.obj[y];
   if(document.activeElement!==$('objIn'))$('objIn').value=v?Math.round(v).toLocaleString('es-AR'):'';
-  $('objNote').textContent=v?'Equivale a '+fmtBig(v)+' en el año, '+fmtM(v/12)+' por mes.':(S.canWrite?'Cargalo en pesos. Se reparte en 12 meses iguales.':'Todavía no hay objetivo cargado para '+y+'.');}
+  $('objNote').textContent=v?'Equivale a '+fmtBig(v)+' en el año, '+fmtM(v/12)+' por mes.':(S.canWrite?(PAIS==='PY'?'Cargalo en dólares.':'Cargalo en pesos (CAC '+CAC_BASE+').')+' Se reparte en 12 meses iguales.':'Todavía no hay objetivo cargado para '+y+'.');}
 $('objSave').onclick=async()=>{const raw=$('objIn').value.replace(/[^\d]/g,'');const v=raw?+raw:0;const y=S.year;
   if(!S.db){toast('Guardado no disponible en esta vista');return}
   const next=Object.assign({},S.obj);if(v)next[y]=v;else delete next[y];
-  try{await S.db.doc('config/objetivos').set({anios:next,actualizado:new Date().toISOString()});S.obj=next;toast(v?'Objetivo '+y+' guardado':'Objetivo '+y+' borrado');render()}catch(e){writeFail(e)}};
+  const doc=Object.assign({},S.objDoc||{},{actualizado:new Date().toISOString()});doc[PAIS==='PY'?'aniosPY':'anios']=next;
+  try{await S.db.doc('config/objetivos').set(doc);S.objDoc=doc;S.obj=next;toast(v?'Objetivo '+y+' guardado':'Objetivo '+y+' borrado');render()}catch(e){writeFail(e)}};
 
 // ---------- importar Excel ----------
 $('fileIn').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
@@ -765,7 +779,7 @@ $('fileIn').addEventListener('change',async e=>{const f=e.target.files[0];e.targ
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
     const hi=rows.findIndex(r=>r&&r.includes('Proyecto')&&r.includes('Obra'));if(hi<0)throw new Error('No encontré la fila de títulos con “Proyecto” y “Obra”.');
     const H=rows[hi];const col=n=>H.findIndex(x=>x&&String(x).trim().toLowerCase()===n.toLowerCase());
-    const c={id:col('Id'),p:col('Proyecto'),o:col('Obra'),ini:col('Fecha de inicio'),fin:col('Fecha de Fin'),m:col('Presupuesto Act'),t:col('Área'),pr:col('Provincia'),un:col('Unidad de Negocio'),pct:col('%'),est:col('Estado Obra'),com:col('Comentarios Costos'),link:col('Link')};
+    const c={id:col('Id'),p:col('Proyecto'),o:col('Obra'),ini:col('Fecha de inicio'),fin:col('Fecha de Fin'),m:col('Presupuesto Act'),mu:col('Presupuesto (U$D)'),t:col('Área'),pr:col('Provincia'),un:col('Unidad de Negocio'),pct:col('%'),est:col('Estado Obra'),com:col('Comentarios Costos'),link:col('Link')};
     const req={id:'Id',p:'Proyecto',o:'Obra',ini:'Fecha de inicio',fin:'Fecha de Fin',m:'Presupuesto Act'};
     const miss=Object.keys(req).filter(k=>c[k]<0).map(k=>req[k]);if(miss.length)throw new Error('Faltan columnas: '+miss.join(', ')+'.');
     const d2s=v=>{if(v instanceof Date&&!isNaN(v))return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return d?d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0'):null}const m=String(v||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):null};
@@ -776,17 +790,17 @@ $('fileIn').addEventListener('change',async e=>{const f=e.target.files[0];e.targ
       const ini=d2s(g(r,'ini')),fin=d2s(g(r,'fin'));if(!ini||!fin){bad.push(name+' (sin fechas)');return}
       if(mi(fin)<mi(ini)){bad.push(name+' (fin anterior al inicio)');return}
       let pct=+g(r,'pct')||0;if(pct>1){pct=pct/100;pctFix++}
-      const m=+g(r,'m')||0;if(!m)noBudget++;
+      const m=+g(r,'m')||0,mu=+g(r,'mu')||0,py=normE(g(r,'pr'))==='paraguay';if(py?!mu:!m)noBudget++;
       seen.add(id);
-      out.push({id,p:String(g(r,'p')),o:String(g(r,'o')||''),t:String(g(r,'t')||'').replace(/^Obras\s+/,''),pr:String(g(r,'pr')||''),un:String(g(r,'un')||'Natania'),ini,fin,m,pct,est:String(g(r,'est')||''),com:String(g(r,'com')||''),link:String(g(r,'link')||'')})});
+      out.push({id,p:String(g(r,'p')),o:String(g(r,'o')||''),t:String(g(r,'t')||'').replace(/^Obras\s+/,''),pr:String(g(r,'pr')||''),un:String(g(r,'un')||'Natania'),ini,fin,m,mu,pct,est:String(g(r,'est')||''),com:String(g(r,'com')||''),link:String(g(r,'link')||'')})});
     if(!out.length)throw new Error('No encontré filas de obras válidas.');
     S.pendingImport={out,file:f.name};
     $('importTxt').innerHTML=`Vas a reemplazar la base actual (<b>${OBRAS.length} obras</b>) por <b>${out.length} obras</b> de <b>${esc(f.name)}</b>. Los escenarios guardados se mantienen.`;
     const li=[];if(bad.length)li.push(`${bad.length} ${bad.length===1?'fila descartada':'filas descartadas'}: ${esc(bad.slice(0,4).join('; '))}${bad.length>4?'…':''}`);
     if(dups.length)li.push(`${dups.length} Id repetidos: se usa la primera fila de cada uno`);
     if(pctFix)li.push(`${pctFix} avances venían como número entero (ej. 2) y se tomaron como porcentaje (2%)`);
-    if(noBudget)li.push(`${noBudget} obras sin presupuesto: se muestran en $ 0`);
-    {const py=out.filter(o=>normE(o.pr)==='paraguay').length;if(py)li.push(`${py} obras de Paraguay: se guardan pero quedan fuera del cálculo (montos en USD)`)}
+    if(noBudget)li.push(`${noBudget} obras sin presupuesto: se muestran en 0`);
+    {const py=out.filter(o=>normE(o.pr)==='paraguay');if(py.length)li.push(`${py.length} obras de Paraguay: van a la solapa Natania Paraguay, en dólares (columna “Presupuesto (U$D)”)${py.some(o=>!o.mu)?' · '+py.filter(o=>!o.mu).length+' sin monto en USD':''}`)}
     if(c.un<0)li.push('No hay columna “Unidad de Negocio”: se asigna Natania a todas');
     $('importList').innerHTML=li.map(x=>`<li>${x}</li>`).join('')||'<li>Sin observaciones.</li>';
     $('importBox').hidden=false;
@@ -814,13 +828,28 @@ function autoEmp(p){const L=S.emp.lista.map(x=>x.nombre);if(!L.length)return nul
   return null}
 function empOf(p){const al=S.emp.alias[p];if(al)return al==='__planner'?p:al;const a=autoEmp(p);return a?a.em:p}
 function applyEmp(){OBRAS.forEach(o=>o.em=empOf(o.p))}
-// Paraguay (montos en USD) queda fuera del cálculo por ahora: se guarda en la base pero no suma.
+// País de cada obra: Paraguay por provincia o por el país del listado de emprendimientos. Paraguay usa el monto en USD.
 const esPY=o=>{if(normE(o.pr)==='paraguay')return true;const e=S.emp.lista.find(x=>x.nombre===empOf(o.p));return !!(e&&normE(e.pais)==='paraguay')};
-function rebuild(){const raw=S.raw||[];S.excl=raw.filter(esPY);OBRAS=prep(raw.filter(o=>!esPY(o)));applyEmp()}
-function setBase(list,info){S.raw=list;rebuild();S.loaded=true;
+function rebuild(){const raw=S.raw||[];const py=raw.filter(esPY),ar=raw.filter(o=>!esPY(o));S.cnt={AR:ar.length,PY:py.length};
+  OBRAS=prep(PAIS==='PY'?py.map(o=>Object.assign({},o,{m:+o.mu||0})):ar);applyEmp()}
+function pickYear(){const cur=Math.floor(NOW/12),c={};OBRAS.forEach(o=>{for(let k=0;k<o.d0;k++){const y=Math.floor((o.s0+k)/12);c[y]=(c[y]||0)+o.m/o.d0}});const fut=Object.keys(c).map(Number).filter(y=>y>=cur&&c[y]>0).sort((x,z)=>x-z);S.year=Math.max(Y0,fut.length?fut[0]:cur)}
+function paisUI(){$('tabAR').setAttribute('aria-selected',PAIS==='AR');$('tabPY').setAttribute('aria-selected',PAIS==='PY');
+  $('tabAR').textContent='Natania Argentina'+(S.cnt?` (${S.cnt.AR})`:'');$('tabPY').textContent='Natania Paraguay'+(S.cnt?` (${S.cnt.PY})`:'');
+  $('subtit').innerHTML=PAIS==='PY'?'Obras de Natania Paraguay en <b>dólares (USD)</b>, según la columna “Presupuesto (U$D)” de Planner. Mové obras en el tiempo y compará contra la base de Planner.'
+    :`Obras de Natania Argentina en <b>pesos constantes</b>: todos los montos están llevados a la <b>actualización CAC ${CAC_BASE}</b><span class="cac">CAC ${CAC_BASE}</span>. Mové obras en el tiempo y compará contra la base de Planner.`;
+  $('pie').textContent=PAIS==='PY'?'Montos en dólares (USD), sin actualización por índice · Reparto actual: partes iguales por mes calendario · Fuente: Planner Premium (Costos Obras).'
+    :`Montos en pesos constantes a la actualización CAC ${CAC_BASE}: cada presupuesto se lleva a ese mes con el factor CAC. En próximas actualizaciones del índice se vuelve a llevar todo al nuevo mes base · Reparto actual: partes iguales por mes calendario · Fuente: Planner Premium (Costos Obras).`;
+  $('objIn').placeholder=PAIS==='PY'?'Ej.: 15.000.000':'Ej.: 8.000.000.000';
+  S.obj=(S.objDoc&&(PAIS==='PY'?S.objDoc.aniosPY:S.objDoc.anios))||{}}
+function setPais(p){if(p===PAIS)return;PAIS=p;try{localStorage.setItem('sim-pais',p)}catch(e){}
+  S.f={prov:'',un:'',emp:'',tipo:''};['fProv','fUn','fEmp','fTipo'].forEach(i=>$(i).value='');S.selMonth=null;S.q='';$('q').value='';
+  rebuild();pickYear();setBase(S.raw||[],S.baseInfo,true)}
+$('tabAR').onclick=()=>setPais('AR');$('tabPY').onclick=()=>setPais('PY');
+document.querySelector('.paises').addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const n=PAIS==='AR'?'PY':'AR';setPais(n);$('tab'+n).focus()}});
+function setBase(list,info,soloPais){if(!soloPais){S.raw=list;S.baseInfo=info;rebuild()}S.loaded=true;paisUI();
   if(info&&!S.yearSet){S.yearSet=true;const cur=Math.floor(NOW/12),c={};OBRAS.forEach(o=>{for(let k=0;k<o.d0;k++){const y=Math.floor((o.s0+k)/12);c[y]=(c[y]||0)+o.m/o.d0}});const fut=Object.keys(c).map(Number).filter(y=>y>=cur&&c[y]>0).sort((x,z)=>x-z);S.year=Math.max(Y0,fut.length?fut[0]:cur)}
   $('sampleBanner').querySelector('b').textContent=info?'Datos cargados':'Sin obras cargadas';
-  $('dataSrc').textContent=info?`${OBRAS.length} obras${S.excl.length?` (+${S.excl.length} de Paraguay excluidas: montos en USD)`:''} · ${info.archivo||'Excel'} · cargado ${new Date(info.cargado).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})} · Presupuesto actualizado por CAC; reparto en partes iguales por mes.`:(S.canWrite?'Todavía no hay una base de obras. Cargá el Excel exportado de Planner (Costos Obras) para empezar.':'Todavía no hay una base de obras. Un editor tiene que cargar el Excel de Planner.');
+  $('dataSrc').textContent=info?`${OBRAS.length} obras de ${PAIS==='PY'?'Paraguay':'Argentina'} · ${info.archivo||'Excel'} · cargado ${new Date(info.cargado).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})} · ${PAIS==='PY'?'montos en USD':'actualización CAC '+CAC_BASE}.${PAIS==='PY'&&OBRAS.some(o=>!o.m)?' Hay obras sin monto en USD: volvé a cargar el Excel de Planner para traer esa columna.':''}`:(S.canWrite?'Todavía no hay una base de obras. Cargá el Excel exportado de Planner (Costos Obras) para empezar.':'Todavía no hay una base de obras. Un editor tiene que cargar el Excel de Planner.');
   buildFilters();render()}
 
 $('empIn').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
@@ -859,7 +888,7 @@ function render(){empStatus();
 let tt;function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,3200)}
 let rz,lw=window.innerWidth;window.addEventListener('resize',()=>{if(window.innerWidth===lw)return;lw=window.innerWidth;clearTimeout(rz);rz=setTimeout(render,150)});
 
-buildFilters();render();
+paisUI();buildFilters();render();
 
 // ---------- capacidades (guardado compartido) ----------
 (async()=>{
@@ -871,7 +900,7 @@ buildFilters();render();
     S.db=db;render();
     db.collection('escenarios').onSnapshot(snap=>{S.escList=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es'));
       if(S.esc&&!S.escList.find(x=>x.id===S.esc)){S.esc=null}if(S.ref&&!S.escList.find(x=>x.id===S.ref)){S.ref=null}render();resolveNames()},()=>{});
-    db.doc('config/objetivos').onSnapshot(d=>{S.obj=(d.exists&&d.data().anios)||{};render()},()=>{});
+    db.doc('config/objetivos').onSnapshot(d=>{S.objDoc=d.exists?d.data():{};paisUI();render()},()=>{});
     db.doc('config/emprendimientos').onSnapshot(d=>{if(d.exists){const x=d.data();S.emp={lista:x.lista||[],alias:x.alias||{},archivo:x.archivo||''};rebuild();buildFilters();render()}},()=>{});
     db.doc('base/obras').onSnapshot(d=>{if(d.exists&&Array.isArray(d.data().obras)&&d.data().obras.length){const x=d.data();setBase(x.obras,{archivo:x.archivo,cargado:x.cargado})}else if(!S.loaded)setBase([],null)},()=>{if(!S.loaded){$('sampleBanner').querySelector('b').textContent='No se pudo leer la base';$('dataSrc').textContent='Revisá la conexión y recargá la página.'}});
   }catch(e){}
