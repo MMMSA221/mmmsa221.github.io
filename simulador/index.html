@@ -265,7 +265,7 @@ footer{border-top:1px solid var(--line)}
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 m</span></span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 n</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><span class="role" id="role">Visualizador</span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
@@ -451,7 +451,7 @@ footer{border-top:1px solid var(--line)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function(){
-const Y0=2026, YMIN_END=2036; let Y1=YMIN_END;
+const Y0=2026, YMIN_END=Math.max(Y0,new Date().getFullYear()); let Y1=YMIN_END;  // el horizonte llega hasta el último año con inversión
 const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const today=new Date(); const NOW=today.getFullYear()*12+today.getMonth();
 const $=id=>document.getElementById(id);
@@ -517,8 +517,8 @@ function clampChange(o,s,d,a){
   s=Math.max(minShift(o)+(a&&o.s0>=NOW?1:0),s);
   const r={s,d};if(a)r.a=a;return r;
 }
-// El horizonte se estira solo hasta el último año con inversión (mínimo 2036)
-function updHorizon(){let y=YMIN_END;const rc=refCh();OBRAS.forEach(o=>{[S.changes,rc,null].forEach(ch=>{const p=plan(o,ch);y=Math.max(y,Math.floor((p.s+p.d-1)/12))})});Y1=y;if(S.year>Y1)S.year=Y1}
+// El horizonte termina en el último año con inversión (simulación, referencia o base): sin años vacíos al final. Si una obra se corre más lejos, se estira solo.
+function updHorizon(){let y=YMIN_END;const rc=refCh();OBRAS.forEach(o=>{if(!(o.m>0))return;[S.changes,rc,null].forEach(ch=>{const p=plan(o,ch);y=Math.max(y,Math.floor((p.s+p.d-1)/12))})});Y1=y;if(S.year>Y1)S.year=Y1}
 function series(list, ch){
   const out=new Map();
   list.forEach(o=>{const f=flujo(o,plan(o,ch));f.v.forEach((x,k)=>{const m=f.i+k;out.set(m,(out.get(m)||0)+x)})});
