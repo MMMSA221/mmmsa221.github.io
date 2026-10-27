@@ -3,21 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Licitaciones · Abastecimiento Estratégico · Grupo ECIPSA</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M6 3h20l3 3v20l-3 3H6l-3-3V6z' fill='%2328283D'/><path d='M6 3h10v13H3V6z' fill='%23FB7520'/></svg>">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="/sesion.js"></script>
-<script>ECI.exigir('licitaciones');</script>
-<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
-<link rel="stylesheet" href="/eci.css">
+<title>Tablero Licitaciones · Grupo ECIPSA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-/* Variables que el tablero esperaba del entorno de Claude, traducidas al sistema común */
-:root{--color-fg:var(--tinta);--color-fg-muted:var(--suave);--color-bg:var(--fondo);--color-panel:var(--hoja);--color-border-line:var(--linea);
-  --color-bad:#c0392b;--color-warn:#d98a00;--color-ok:#1d7a42;--cds-text-secondary:var(--texto);--cds-border:var(--linea);
-  --cds-chart-grid:var(--linea);--cds-chart-muted:rgba(40,40,61,.28);--cds-surface-popover:var(--hoja);--cds-shadow-popover:0 8px 24px rgba(0,0,0,.14);
-  --cds-radius:6px;--cds-gap-xs:4px;--cds-gap-sm:8px;--cds-gap-md:14px;--cds-gap-lg:24px;--cds-pad-xs:4px;--cds-pad-sm:8px;--cds-pad-md:14px;--cds-pad-lg:20px;--cds-pad-xl:32px;
-  --cds-font-size-caption:13px;--cds-font-size-body:15px;--cds-font-size-heading:22px;--cds-dur-slow:240ms;--font-anthropic-sans:'Open Sans'}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--color-bad:#ff8a80;--color-warn:#f2c15a;--color-ok:#6fd3a0;--cds-chart-muted:rgba(242,242,245,.3)}}
+:root {
+  --color-bg: #F6F6F6; --color-panel: #FFFFFF; --color-fg: #28283D; --color-fg-muted: #6b6b6a;
+  --color-border-line: rgba(87,87,86,.18); --color-ok: #1d7a43; --color-warn: #a35f00; --color-bad: #c0352b;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 16px; --cds-gap-lg: 24px; --cds-gap-xl: 32px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 16px; --cds-pad-lg: 24px; --cds-pad-xl: 48px;
+  --cds-radius: 12px; --cds-font-size-caption: 12.5px; --cds-font-size-body: 14.5px; --cds-font-size-heading: 18px; --cds-font-size-title: 28px;
+  --cds-chart-grid: rgba(87,87,86,.14); --cds-chart-muted: #c3c3c8; --cds-surface-popover: #FFFFFF; --cds-border: rgba(87,87,86,.22);
+  --cds-shadow-popover: 0 4px 12px rgba(0,0,0,.12); --cds-text-secondary: #6b6b6a; --cds-dur-slow: 250ms;
+  --font-anthropic-sans: "Open Sans", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --color-bg: #1b1b29; --color-panel: #28283D; --color-fg: #f1f1f4; --color-fg-muted: #a9a9b8;
+    --color-border-line: rgba(255,255,255,.12); --color-ok: #5fd08b; --color-warn: #f0b04a; --color-bad: #ff7a6e;
+    --cds-chart-grid: rgba(255,255,255,.10); --cds-chart-muted: #5d5d72; --cds-surface-popover: #32324a; --cds-border: rgba(255,255,255,.18);
+    --cds-text-secondary: #a9a9b8; color-scheme: dark; }
+}
+html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); font-size: 14.5px; }
+#dash-root { padding: 16px max(16px, env(safe-area-inset-left, 0px)) 32px max(16px, env(safe-area-inset-right, 0px)); }
+[hidden] { display: none !important; }
+.dash-skeleton { background: var(--cds-chart-grid); border-radius: 8px; }
 
 #dash-root { --dash-gutter: 0; }
 .lt {
@@ -99,6 +109,10 @@
 .lt-pill[data-s="Nueva"] { color: var(--lt-orange); }
 .lt-pill[data-s="Cerrada"] { color: var(--color-ok); }
 .lt-pill[data-s="Cambio de estado"] { color: var(--color-fg-muted); }
+.lt-pill[data-s="Atrasada vs plan"], .lt-pill[data-s="Cerrada con atraso"] { color: var(--color-bad); }
+.lt-pill[data-s="Fuera del informe"] { color: var(--color-warn); }
+.lt-pill[data-s="Cerrada a tiempo"], .lt-pill[data-s="En curso, dentro del plan"] { color: var(--color-ok); }
+.lt-pill[data-s="Suspendida"], .lt-pill[data-s="Todavía no arrancó"], .lt-pill[data-s="Cerrada sin fecha"] { color: var(--color-fg-muted); }
 .lt-arrow { color: var(--color-fg-muted); padding-inline: 4px; }
 .lt-empty { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); padding: var(--cds-pad-md) 0; }
 .lt-cols { display: flex; align-items: flex-end; gap: var(--cds-gap-sm); height: 200px; padding-top: 1.4rem; }
@@ -116,57 +130,16 @@
   .lt-field input, .lt-field select { min-width: 0; width: 100%; }
   .lt-tools { display: grid; grid-template-columns: 1fr; }
 }
-
-/* Ajustes al sistema visual común */
-.hoja-lic{max-width:1180px;margin:0 auto;padding:36px 24px 48px}
-.lt-band{background:none!important;color:var(--tinta)!important;padding:0 0 6px!important;border-radius:0!important}
-.lt-title{font-family:var(--tit)!important;font-weight:800!important;font-size:clamp(34px,4.6vw,52px)!important;letter-spacing:-.02em;color:var(--tinta)!important}
-.lt-take{color:var(--texto)!important;font-size:16px!important}
-.lt-take .lt-hl{color:var(--naranja-osc)!important}
-.lt-card{box-shadow:none!important;border:1px solid var(--linea)!important;border-radius:6px!important;background:var(--hoja)!important}
-.lt-card h2{font-family:var(--tit);font-weight:700;letter-spacing:-.01em}
-.lt-tiles{gap:0!important;border-top:2px solid var(--tinta);border-bottom:1px solid var(--linea)}
-.lt-tile{background:none!important;box-shadow:none!important;border:0!important;border-right:1px solid var(--linea)!important;border-radius:0!important}
-.lt-tile:last-child{border-right:0!important}
-.lt-tile-label{text-transform:none!important;letter-spacing:0!important;font-weight:600}
-.lt-tile-num{font-family:var(--tit);font-weight:800}
-.lt-tile.is-bad{box-shadow:inset 0 3px 0 var(--color-bad)!important}
-.lt-tile.is-warn{box-shadow:inset 0 3px 0 var(--color-warn)!important}
-.lt-track{height:8px!important;border-radius:2px!important}
-.lt-fill{border-radius:2px!important}
-.lt-table th{text-transform:none!important;letter-spacing:0!important}
-.lt-bar{flex-wrap:wrap;align-items:flex-end!important;justify-content:flex-start!important;gap:12px 16px!important}
-#f-nota{flex-basis:100%}
-.filtro select{min-width:160px;max-width:240px}
-.lt-tools{flex-wrap:wrap}
-#f-limpiar{display:block;padding:0;margin:-4px 0 12px;text-align:left;min-height:32px}
-.lt-tile[data-filtro]{cursor:pointer;text-align:left;font:inherit;color:inherit;transition:background 140ms ease-out}
-.lt-tile[data-filtro]:hover{background:var(--trama)!important}
-.lt-tile[aria-pressed="true"]{background:var(--hoja)!important}
-.lt-tile[aria-pressed="true"] .lt-tile-label{color:var(--tinta);text-decoration:underline;text-decoration-color:var(--naranja);text-decoration-thickness:2px;text-underline-offset:4px}
-.datos{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--suave);margin:6px 0 18px}
-.datos label.eci-btn{display:inline-flex;align-items:center;min-height:36px;font-size:13px;cursor:pointer}
-.datos input{position:absolute;left:-9999px}
 </style>
 </head>
 <body>
-<header class="eci-barra">
-  <div class="eci-barra-in">
-    <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Licitaciones de Abastecimiento Estratégico <span style="font-weight:400;font-size:12px">· versión 26-10 e</span></span>
-    <div class="eci-usuario"><span class="nombre" id="uNom"></span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
-  </div>
-</header>
-<main class="hoja-lic">
-  <div class="datos" id="datos"><span id="datosInfo">Cargando el último informe…</span>
-    <label class="eci-btn" id="datosBtn" hidden>Actualizar datos<input type="file" id="datosIn" accept=".csv" multiple></label>
-  </div>
-  <div id="dash-root">
+<div id="dash-root">
 
 
 <div class="lt" id="tablero">
   <header class="lt-band" id="encabezado">
-        <h1 class="lt-title">Licitaciones</h1>
+    <div class="lt-eyebrow">Grupo <span class="lt-e">E</span>CIPSA · Abastecimiento Estratégico</div>
+    <h1 class="lt-title">Tablero Licitaciones</h1>
     <p class="lt-take">Informe del <b class="lt-hl" data-source="resumen" data-field="semana" id="tk-semana">—</b>:
       <b data-source="resumen" data-field="activas" id="tk-activas">—</b> licitaciones en gestión,
       <b class="lt-hl" data-source="resumen" data-field="vencidas" id="tk-vencidas">—</b> fuera de plazo y
@@ -186,6 +159,7 @@
     <button type="button" role="tab" data-tab="activas" id="tab-activas">Activas</button>
     <button type="button" role="tab" data-tab="semana" id="tab-semana">Semana a semana</button>
     <button type="button" role="tab" data-tab="historico" id="tab-historico">Histórico</button>
+    <button type="button" role="tab" data-tab="plan" id="tab-plan">Plan vs real</button>
     <button type="button" role="tab" data-tab="buscar" id="tab-buscar">Buscar proceso</button>
   </nav>
 
@@ -216,26 +190,19 @@
       <h2>Licitaciones en gestión</h2>
       <p class="lt-note">Días restantes = días de licitación y adjudicación de la categoría menos los días desde la recepción de RFQ (o el relanzamiento) hasta la fecha del informe. Ordenadas de la más atrasada a la más holgada.</p>
       <div class="lt-tools">
-        <label class="lt-field filtro" for="f-prov">Provincia
-          <select id="f-prov"><option value="">Todas</option></select>
-        </label>
-        <label class="lt-field filtro" for="f-emp">Emprendimiento
-          <select id="f-emp"><option value="">Todos</option></select>
-        </label>
         <label class="lt-field" for="f-resp">Asignada a
           <select id="f-resp"></select>
         </label>
         <label class="lt-field" for="f-semaf">Situación
           <select id="f-semaf">
             <option value="">Todas</option>
-            <option>Vencida</option><option>Por vencer</option><option>En plazo</option><option value="__sin">Sin fecha RFQ o sin plazo</option><option>Sin fecha RFQ</option><option>Sin plazo</option>
+            <option>Vencida</option><option>Por vencer</option><option>En plazo</option><option>Sin fecha RFQ</option><option>Sin plazo</option>
           </select>
         </label>
         <label class="lt-field" for="f-q-act">Buscar
           <input id="f-q-act" type="search" placeholder="Detalle, proyecto, plaza…">
         </label>
       </div>
-      <p class="lt-note" id="f-nota" hidden></p><button type="button" class="eci-link" id="f-limpiar" hidden>Quitar filtros de provincia y emprendimiento</button>
       <div class="lt-tablebox">
         <table class="lt-table" id="tb-activas" data-source="procesos" data-row-key="clave">
           <thead><tr>
@@ -325,6 +292,41 @@
     </div>
   </section>
 
+  <!-- PLAN VS REAL -->
+  <section class="lt-page" id="plan" role="tabpanel" aria-labelledby="tab-plan" hidden>
+    <p class="lt-note">Compara las tareas de Abastecimiento Estratégico del Tablero de Control de Planificación (Natania) con las fechas reales del informe semanal. Solo Argentina: el filtro de país no aplica en esta pestaña.</p>
+    <div class="lt-tiles">
+      <div class="lt-tile" id="t-pl-llegada"><span class="lt-tile-label">Pedidos que llegaron a tiempo</span><span class="lt-tile-num" data-source="plan_resumen" data-field="llegadas_a_tiempo" data-where="grupo=total">—</span><span class="lt-tile-sub">de <b data-source="plan_resumen" data-field="llegadas_medidas" data-where="grupo=total">—</b> con fecha RFQ y fecha planificada</span></div>
+      <div class="lt-tile" id="t-pl-cerradas"><span class="lt-tile-label">Cerradas a tiempo</span><span class="lt-tile-num" data-source="plan_resumen" data-field="cerradas_a_tiempo" data-where="grupo=total">—</span><span class="lt-tile-sub">de <b data-source="plan_resumen" data-field="cerradas" data-where="grupo=total">—</b> adjudicadas con fecha</span></div>
+      <div class="lt-tile is-bad" id="t-pl-atrasadas"><span class="lt-tile-label">Atrasadas vs plan</span><span class="lt-tile-num" data-source="plan_resumen" data-field="atrasadas" data-where="grupo=total">—</span><span class="lt-tile-sub">Pasó la fecha de fin y siguen abiertas</span></div>
+      <div class="lt-tile is-warn" id="t-pl-fuera"><span class="lt-tile-label">En el plan, no en el informe</span><span class="lt-tile-num" data-source="plan_resumen" data-field="fuera_informe" data-where="grupo=total">—</span><span class="lt-tile-sub">Ya debían haber arrancado</span></div>
+    </div>
+    <div class="lt-card" id="card-plan">
+      <h2>Tarea por tarea</h2>
+      <p class="lt-note">Llegada = fecha de recepción de RFQ menos inicio planificado de la licitación (negativo: llegó antes). Vs fin plan = adjudicación real, o fecha del informe si sigue abierta, menos fin planificado de la adjudicación (positivo: atraso). El emparejamiento entre plan e informe se hizo por nombre y está confirmado por el área.</p>
+      <div class="lt-tools">
+        <label class="lt-field" for="f-sit">Situación
+          <select id="f-sit"></select>
+        </label>
+      </div>
+      <div class="lt-tablebox">
+        <table class="lt-table" id="tb-plan" data-source="plan_vs_real" data-row-key="clave_plan">
+          <thead><tr>
+            <th data-field="proyecto">Proyecto</th>
+            <th data-field="tarea_plan">Tarea del plan</th>
+            <th data-field="clave_informe">#</th>
+            <th data-field="fin_plan" class="lt-hide-sm">Fin plan</th>
+            <th data-field="dias_llegada">Llegada</th>
+            <th data-field="dias_vs_fin_plan">Vs fin plan</th>
+            <th data-field="situacion">Situación</th>
+            <th data-field="confianza" class="lt-hide-sm">Confianza</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- BUSCAR -->
   <section class="lt-page" id="buscar" role="tabpanel" aria-labelledby="tab-buscar" hidden>
     <div class="lt-card" id="card-buscar">
@@ -358,146 +360,36 @@
 </div>
 
 
-  </div>
-</main>
+</div>
+<script src="d3.min.js"></script>
+<script src="datos.js"></script>
+
 <script>
-/* ═══ Reemplazo del entorno de tableros de Claude ═══
-   Datos: tabla public.docs (app "licitaciones", colección "datos"): procesos, movimientos y evolucion, guardados como CSV.
-   Cálculos: los mismos de la versión anterior (dash.calc), resueltos acá en el navegador. */
+/* Reemplazo mínimo de la API del tablero: lee window.DATOS (datos.js) y calcula todo en el navegador. */
 (function () {
-  const APP = 'licitaciones', FUENTES = ['procesos', 'movimientos', 'evolucion'];
-  const RAW = {}, CALC = {}, CACHE = {}, SUBS = []; let estado = 'loading', PARAMS = {};
-  try { const q = new URLSearchParams(location.search); ['pais', 'prov', 'emp'].forEach(function (k) { if (q.get(k)) PARAMS[k] = q.get(k); }); } catch (e) { }
-  const api = async function (path, o) {
-    o = o || {}; const h = Object.assign(await ECI.headers(), { 'Content-Type': 'application/json' }); if (o.prefer) h.Prefer = o.prefer;
-    const r = await fetch(ECI.SB_URL + '/rest/v1/' + path, { method: o.method || 'GET', headers: h, body: o.body ? JSON.stringify(o.body) : undefined });
-    if (!r.ok) { let m = ''; try { m = (await r.json()).message; } catch (e) { } throw new Error(m || 'Error ' + r.status); }
-    return r.status === 204 ? null : r.json().catch(function () { return null; });
-  };
-  // Iniciales del informe → nombre completo (las demás quedan como vienen)
-  const PERSONAS = { LF: 'Laura Fuster', PJ: 'Pablo Jover' };
-  const nombrePersona = function (a) { return String(a || '').split('/').map(function (x) { x = x.trim(); return PERSONAS[x] || x; }).join(' / '); };
-  const normProv = function (p) { p = (p || '').trim(); return p === 'Neuquen' ? 'Neuquén' : p || 'Sin provincia'; };
-  const hayFiltro = function () { return !!(PARAMS.prov || PARAMS.emp); };
-  let PLAZA = {}, EMP = null;   // EMP: base oficial de emprendimientos (tabla public.emprendimientos)
-  // Vincula cada fila del informe con la base oficial: el nombre y la provincia salen de la base, no del informe
-  async function vincular() {
-    let alias = {};
-    try {
-      const [e, a] = await Promise.all([api('emprendimientos?select=nombre,pais,provincia&vigente=is.true'), api('emprendimientos_alias?select=alias,emprendimiento,tipo')]);
-      EMP = {}; (e || []).forEach(function (x) { EMP[x.nombre] = x; });
-      (a || []).forEach(function (x) { alias[x.alias.trim()] = x; });
-    } catch (err) { EMP = null; }
-    const asignar = function (r) {
-      const a = alias[(r.proyecto || '').trim()];
-      if (a && a.tipo === 'descartado') return false;
-      if (a && a.tipo === 'vinculado' && EMP && EMP[a.emprendimiento]) { r.proyecto = a.emprendimiento; r._prov = EMP[a.emprendimiento].provincia; r._emp = a.emprendimiento; }
-      else if (a && a.tipo === 'varios') { r.proyecto = 'Varios'; r._prov = normProv(r.plaza); r._emp = 'Varios'; }
-      else { r._prov = normProv(r.plaza); r._emp = ''; }   // sin vincular: queda en los totales, no en el filtro de emprendimiento
-      return true;
-    };
-    RAW.procesos = (RAW.procesos || []).filter(asignar);
-    const vivos = {}; RAW.procesos.forEach(function (r) { vivos[r.clave] = r; });
-    RAW.movimientos = (RAW.movimientos || []).filter(function (r) { const p = vivos[r.clave]; if (p) { r.proyecto = p.proyecto; r._emp = p._emp; return true; } return asignar(r); });
-  }   // clave del proceso → provincia, para filtrar los movimientos
-  function filtrar(n) {
-    const key = n + '|' + (PARAMS.prov || '') + '|' + (PARAMS.emp || '');
-    if (CACHE[key]) return CACHE[key];
-    const ok = function (prov, emp) { return (!PARAMS.prov || prov === PARAMS.prov) && (!PARAMS.emp || emp === PARAMS.emp); };
-    const out = n === 'procesos'
-      ? RAW.procesos.filter(function (r) { return ok(r._prov, r._emp); })
-      : RAW.movimientos.filter(function (r) { return ok(PLAZA[r.clave] || r._prov || 'Sin provincia', r._emp); });
-    return (CACHE[key] = out);
+  const D = window.DATOS || {};
+  const calcs = {}, listeners = [];
+  const params = { pais: 'Todos' };
+  const res = {};
+  function get(id) {
+    if (id in res) return res[id];
+    if (calcs[id]) { const c = calcs[id]; res[id] = c.fn.apply(null, c.inputs.map((i) => get(i))); return res[id]; }
+    return D[id] || [];
   }
-  // Resumen del último informe recalculado sobre los procesos filtrados (la evolución semanal no tiene el detalle por provincia)
-  function resumenFiltrado() {
-    const p = filtrar('procesos').filter(function (r) { return r.activa === 'si'; });
-    const mov = filtrar('movimientos'), ult = (RAW.evolucion.map(function (r) { return r.semana; }).sort().pop()) || '';
-    return ['Todos', 'ARG', 'PY'].map(function (pais) {
-      const q = p.filter(function (r) { return pais === 'Todos' || r.pais === pais; });
-      const m = mov.filter(function (r) { return r.semana === ult && (pais === 'Todos' || r.pais === pais); });
-      const c = function (s) { return q.filter(function (r) { return r.semaforo === s; }).length; };
-      const t = function (s) { return m.filter(function (r) { return r.tipo === s; }).length; };
-      return { pais: pais, semana: ult, semana_anterior: '', activas: q.length, vencidas: c('Vencida'), por_vencer: c('Por vencer'), en_plazo: c('En plazo'),
-        sin_fecha: c('Sin fecha RFQ') + c('Sin plazo'), nuevas: t('Nueva'), cambios_estado: t('Cambio de estado'), cerradas_semana: t('Cerrada'), delta_activas: null, delta_vencidas: null };
-    });
-  }
-  function armarFiltros() {
-    const sp = document.getElementById('f-prov'), se = document.getElementById('f-emp');
-    const cmp = function (a, b) { return a.localeCompare(b, 'es'); };
-    const oficiales = EMP ? Array.from(new Set(Object.values(EMP).map(function (x) { return x.provincia; }))).sort(cmp) : [];
-    const otras = Array.from(new Set(RAW.procesos.map(function (r) { return r._prov; }))).filter(function (p) { return oficiales.indexOf(p) < 0; }).sort(cmp);
-    const provs = oficiales.concat(otras);
-    sp.innerHTML = '<option value="">Todas</option>' + provs.map(function (p) { return '<option>' + p.replace(/</g, '&lt;') + '</option>'; }).join('');
-    sp.value = PARAMS.prov || '';
-    // Emprendimientos de la base oficial (de la provincia elegida), más "Varios"
-    const emps = (EMP ? Object.values(EMP).filter(function (x) { return !PARAMS.prov || x.provincia === PARAMS.prov; }).map(function (x) { return x.nombre; }).sort(cmp) : [])
-      .concat(RAW.procesos.some(function (r) { return r._emp === 'Varios' && (!PARAMS.prov || r._prov === PARAMS.prov); }) ? ['Varios'] : []);
-    se.innerHTML = '<option value="">Todos</option>' + emps.map(function (p) { return '<option>' + p.replace(/</g, '&lt;') + '</option>'; }).join('');
-    se.value = emps.indexOf(PARAMS.emp) >= 0 ? PARAMS.emp : '';
-    document.getElementById('f-limpiar').hidden = !hayFiltro();
-    const nota = document.getElementById('f-nota'); nota.hidden = !hayFiltro();
-    nota.textContent = 'Provincia y emprendimiento también ajustan los indicadores de arriba y las otras pestañas; la evolución semanal muestra siempre el total del informe.';
-  }
-  document.getElementById('f-prov').addEventListener('change', function (e) { dash.setParams({ prov: e.target.value, emp: '' }); });
-  document.getElementById('f-emp').addEventListener('change', function (e) { dash.setParams({ emp: e.target.value }); });
-  document.getElementById('f-limpiar').addEventListener('click', function () { dash.setParams({ prov: '', emp: '' }); });
-  const avisar = function () { if (estado === 'ok') { Object.keys(CACHE).forEach(function (k) { delete CACHE[k]; }); armarFiltros(); } SUBS.forEach(function (f) { try { f(); } catch (e) { console.error(e); } }); };
+  const fire = () => listeners.forEach((f) => f());
   window.dash = {
-    calc: function (n, def) { CALC[n] = def; },
-    data: function (n) {
-      if (estado !== 'ok') return { status: estado };
-      if (n === 'procesos' || n === 'movimientos') return { status: 'ok', data: filtrar(n) };
-      if (n === 'resumen' && hayFiltro()) return { status: 'ok', data: resumenFiltrado() };
-      if (RAW[n]) return { status: 'ok', data: RAW[n] };
-      const c = CALC[n]; if (!c) return { status: 'error' };
-      if (!(n in CACHE)) CACHE[n] = c.fn.apply(null, c.inputs.map(function (i) { return dash.data(i).data || []; }));
-      return { status: 'ok', data: CACHE[n] };
-    },
-    params: function () { return PARAMS; },
-    setParams: function (p) { PARAMS = Object.assign({}, PARAMS, p); Object.keys(PARAMS).forEach(function (k) { if (!PARAMS[k]) delete PARAMS[k]; }); const q = new URLSearchParams(PARAMS); try { history.replaceState(null, '', '?' + q + location.hash); } catch (e) { } avisar(); },
-    setLink: function (id) { try { history.replaceState(null, '', location.pathname + location.search + '#' + id); } catch (e) { } },
-    onData: function (f) { SUBS.push(f); if (estado === 'ok') f(); }
+    data: (id) => ({ status: 'ok', data: get(id), meta: [] }),
+    calc: (id, def) => { calcs[id] = def; },
+    onData: (fn) => { listeners.push(fn); fn(); },
+    params: () => ({ ...params }),
+    setParams: (p) => { Object.assign(params, p); fire(); },
+    resetParams: () => { params.pais = 'Todos'; fire(); },
+    setLink: (name) => { try { history.replaceState(null, '', '#' + name); } catch (e) {} },
   };
-  async function cargar() {
-    const x = await ECI.listo; document.getElementById('uNom').textContent = x.usuario.nombre;
-    if (x.usuario.rol === 'admin') document.getElementById('datosBtn').hidden = false;
-    try {
-      const filas = await api('docs?app=eq.' + APP + '&coleccion=eq.datos&select=id,data,actualizado,actualizado_por') || [];
-      Object.keys(CACHE).forEach(function (k) { delete CACHE[k]; });
-      filas.forEach(function (f) { if (FUENTES.indexOf(f.id) >= 0) RAW[f.id] = d3.csvParse(f.data.csv || ''); });
-      await vincular();
-      PLAZA = {}; (RAW.procesos || []).forEach(function (r) { PLAZA[r.clave] = r._prov; });
-      ['procesos', 'movimientos'].forEach(function (k) { (RAW[k] || []).forEach(function (r) { r.asignada = nombrePersona(r.asignada); }); });
-      const falta = FUENTES.filter(function (k) { return !RAW[k]; });
-      const ult = filas.map(function (f) { return f.actualizado; }).sort().pop();
-      const quien = (filas.find(function (f) { return f.actualizado === ult; }) || {}).actualizado_por;
-      document.getElementById('datosInfo').textContent = falta.length
-        ? 'Faltan datos: ' + falta.join(', ') + '. Un administrador tiene que cargarlos con “Actualizar datos”.'
-        : 'Datos actualizados el ' + new Date(ult).toLocaleString('es-AR') + (quien ? ' por ' + quien : '') + '.';
-      estado = falta.length ? 'error' : 'ok';
-    } catch (e) { estado = 'error'; document.getElementById('datosInfo').textContent = 'No se pudieron leer los datos: ' + e.message; }
-    avisar();
-  }
-  document.getElementById('datosIn').addEventListener('change', async function (e) {
-    const files = Array.from(e.target.files || []); e.target.value = '';
-    const info = document.getElementById('datosInfo');
-    try {
-      let n = 0;
-      for (const f of files) {
-        const id = f.name.toLowerCase().replace(/\.csv$/, '');
-        if (FUENTES.indexOf(id) < 0) { info.textContent = 'El archivo ' + f.name + ' no se reconoce: tiene que llamarse procesos.csv, movimientos.csv o evolucion.csv.'; return; }
-        const txt = await f.text(); d3.csvParse(txt);
-        await api('docs?on_conflict=app,coleccion,id', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: { app: APP, coleccion: 'datos', id: id, data: { csv: txt, archivo: f.name } } });
-        n++;
-      }
-      info.textContent = n + ' archivo' + (n === 1 ? '' : 's') + ' cargado' + (n === 1 ? '' : 's') + '. Actualizando…';
-      cargar();
-    } catch (err) { info.textContent = 'No se pudo cargar: ' + err.message; }
-  });
-  cargar();
+  let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(fire, 150); });
 })();
 </script>
+
 <script>
 /* ---------- Cálculos (visibles en Fuentes) ---------- */
 dash.calc('semanas', {
@@ -567,6 +459,23 @@ dash.calc('por_anio', {
     });
     return Object.values(out).map((o) => ({ ...o, pct_en_plazo: o.medidas ? o.en_plazo / o.medidas : null }))
       .sort((a, b) => a.anio.localeCompare(b.anio));
+  },
+});
+
+dash.calc('plan_resumen', {
+  inputs: ['plan_vs_real'],
+  title: 'Resumen plan vs real',
+  description: 'Cuántas tareas del plan llegaron y cerraron a tiempo, cuántas están atrasadas y cuántas no figuran en el informe.',
+  fn: (plan_vs_real) => {
+    const n = (f) => plan_vs_real.filter(f).length;
+    const lleg = plan_vs_real.filter((r) => r.dias_llegada !== '' && r.dias_llegada != null);
+    return [{ grupo: 'total',
+      llegadas_medidas: lleg.length,
+      llegadas_a_tiempo: lleg.filter((r) => Number(r.dias_llegada) <= 0).length,
+      cerradas: n((r) => String(r.situacion).startsWith('Cerrada a') || r.situacion === 'Cerrada con atraso'),
+      cerradas_a_tiempo: n((r) => r.situacion === 'Cerrada a tiempo'),
+      atrasadas: n((r) => r.situacion === 'Atrasada vs plan'),
+      fuera_informe: n((r) => r.situacion === 'Fuera del informe') }];
   },
 });
 
@@ -661,8 +570,7 @@ dash.calc('por_categoria', {
     el.classList.remove('dash-skeleton');
     const rows = d.data.filter((r) => r.pais === pais());
     const W = Math.max(280, el.clientWidth), H = 220, m = { t: 22, r: 8, b: 26, l: 30 };
-    const x = d3.scaleBand(rows.map((r) => r.semana), [m.l, W - m.r]).padding(0.5);
-    const bw = Math.min(36, x.bandwidth()), xo = (k) => x(k) + (x.bandwidth() - bw) / 2;  // barras finas aunque haya pocas semanas
+    const x = d3.scaleBand(rows.map((r) => r.semana), [m.l, W - m.r]).padding(0.35);
     const ymax = d3.max(rows, (r) => r.activas) || 1;
     const y = d3.scaleLinear([0, ymax], [H - m.b, m.t]).nice();
     const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
@@ -675,7 +583,7 @@ dash.calc('por_categoria', {
       const g = svg.append('g').style('cursor', 'default');
       SERIES.forEach((s) => {
         const v = r[s.k]; if (!v) return;
-        g.append('rect').attr('x', xo(r.semana)).attr('width', bw).attr('y', y(acc + v)).attr('height', y(acc) - y(acc + v)).attr('fill', s.c).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1);
+        g.append('rect').attr('x', x(r.semana)).attr('width', x.bandwidth()).attr('y', y(acc + v)).attr('height', y(acc) - y(acc + v)).attr('fill', s.c).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1);
         acc += v;
       });
       g.append('text').attr('x', x(r.semana) + x.bandwidth() / 2).attr('y', y(acc) - 6).attr('text-anchor', 'middle').attr('font-size', 12).attr('font-weight', 700).attr('fill', 'var(--color-fg)')
@@ -727,7 +635,7 @@ dash.calc('por_categoria', {
     const act = d.data.filter((r) => r.activa === 'si' && enPais(r));
     setOptions($('#f-resp'), [...new Set(act.map((r) => r.asignada))].sort(), 'Todas las personas');
     const resp = $('#f-resp').value, sem = $('#f-semaf').value, q = $('#f-q-act').value.trim().toLowerCase();
-    const rows = act.filter((r) => (!resp || r.asignada === resp) && (!sem || r.semaforo === sem || (sem === '__sin' && (r.semaforo === 'Sin fecha RFQ' || r.semaforo === 'Sin plazo'))) &&
+    const rows = act.filter((r) => (!resp || r.asignada === resp) && (!sem || r.semaforo === sem) &&
       (!q || [r.detalle, r.proyecto, r.plaza, r.solped, r.categoria, r.estado].join(' ').toLowerCase().includes(q)))
       .sort((a, b) => (ORD[a.semaforo] - ORD[b.semaforo]) || (Number(a.dias_restantes) - Number(b.dias_restantes)));
     if (!rows.length) empty(tb, 8, 'Ninguna licitación coincide con los filtros.');
@@ -802,6 +710,40 @@ dash.calc('por_categoria', {
     $('#cnt-all').textContent = rows.length > shown.length ? `Mostrando los ${shown.length} más recientes de ${rows.length}. Afiná la búsqueda para ver el resto.` : `${rows.length} procesos.`;
   };
 
+  /* plan vs real */
+  const fmtDias = (v) => (v === '' || v == null ? '—' : (Number(v) > 0 ? '+' + v : String(v)));
+  $('#f-sit').addEventListener('change', draw);
+  const drawPlanResumen = () => {
+    const d = dash.data('plan_resumen'); const r = d.status === 'ok' ? d.data[0] : null;
+    document.querySelectorAll('[data-source="plan_resumen"]').forEach((el) => { el.textContent = r ? r[el.dataset.field] : '—'; });
+  };
+  const drawPlan = () => {
+    drawPlanResumen();
+    const tb = $('#tb-plan tbody'); tb.replaceChildren();
+    const d = dash.data('plan_vs_real'); if (d.status !== 'ok') return;
+    setOptions($('#f-sit'), [...new Set(d.data.map((r) => r.situacion))].sort(), 'Todas');
+    const sit = $('#f-sit').value;
+    const orden = { 'Atrasada vs plan': 0, 'Fuera del informe': 1, 'Cerrada con atraso': 2, 'En curso, dentro del plan': 3, 'Todavía no arrancó': 4, 'Cerrada a tiempo': 5, 'Cerrada sin fecha': 6, 'Suspendida': 7 };
+    d.data.filter((r) => !sit || r.situacion === sit)
+      .sort((a, b) => ((orden[a.situacion] ?? 9) - (orden[b.situacion] ?? 9)) || a.proyecto.localeCompare(b.proyecto))
+      .forEach((r) => {
+        const tr = document.createElement('tr'); tr.dataset.key = r.clave_plan;
+        td(tr, r.proyecto);
+        const c = td(tr, r.tarea_plan, 'lt-wide');
+        const sub = document.createElement('span'); sub.className = 'lt-sub';
+        sub.textContent = r.detalle_informe ? 'Informe: ' + r.detalle_informe + ' · ' + r.estado_informe : (r.nota || 'Sin proceso en el informe');
+        c.appendChild(sub);
+        if (r.nota && r.detalle_informe) { const n2 = document.createElement('span'); n2.className = 'lt-sub'; n2.textContent = r.nota; c.appendChild(n2); }
+        td(tr, r.clave_informe || '—', 'lt-key');
+        td(tr, fmtFecha(r.fin_plan), 'lt-num lt-hide-sm');
+        const l = td(tr, fmtDias(r.dias_llegada), 'lt-num'); if (Number(r.dias_llegada) > 0) l.style.color = 'var(--color-bad)';
+        const v = td(tr, fmtDias(r.dias_vs_fin_plan), 'lt-num'); if (Number(r.dias_vs_fin_plan) > 0) v.style.color = 'var(--color-bad)';
+        const p = td(tr, ''); pill(p, r.situacion);
+        td(tr, r.confianza || '—', 'lt-hide-sm');
+        tb.appendChild(tr);
+      });
+  };
+
   /* resumen + encabezado */
   const drawResumen = () => {
     const d = dash.data('resumen');
@@ -812,7 +754,7 @@ dash.calc('por_categoria', {
       if (!r) { el.textContent = '—'; return; }
       const f = el.dataset.field; const v = r[f];
       if (f === 'semana') el.textContent = fmtFecha(v);
-      else if (f.startsWith('delta_')) el.textContent = v === null ? 'Con filtros aplicados' : v === '' ? 'Primer informe cargado' : (v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : 'Igual') + ' vs ' + fmtFecha(r.semana_anterior).slice(0, 5);
+      else if (f.startsWith('delta_')) el.textContent = v === '' ? 'Primer informe cargado' : (v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : 'Igual') + ' vs ' + fmtFecha(r.semana_anterior).slice(0, 5);
       else el.textContent = v;
       if (f.startsWith('delta_')) { el.classList.toggle('lt-up', v > 0); el.classList.toggle('lt-down', v < 0); }
     });
@@ -824,42 +766,15 @@ dash.calc('por_categoria', {
     if (tab === 'activas') { hbars($('#ch-etapas'), 'por_etapa', 'etapa', true); hbars($('#ch-resp'), 'por_responsable', 'responsable'); drawActivas(); }
     if (tab === 'semana') { drawEvol(); drawMov(); }
     if (tab === 'historico') { drawAnio(); drawCat(); }
+    if (tab === 'plan') drawPlan();
     if (tab === 'buscar') drawAll();
   }
 
   const start = location.hash.slice(1);
-  showTab(['activas', 'semana', 'historico', 'buscar'].includes(start) ? start : 'activas');
+  showTab(['activas', 'semana', 'historico', 'plan', 'buscar'].includes(start) ? start : 'activas');
   dash.onData(draw);
 })();
 </script>
-<script>
-/* Indicadores que filtran: tocar uno muestra en la tabla las licitaciones a las que se refiere */
-(function () {
-  const ACT = { 't-activas': '', 't-vencidas': 'Vencida', 't-porvencer': 'Por vencer', 't-enplazo': 'En plazo', 't-sinfecha': '__sin' };
-  const SEM = { 't-nuevas': 'Nueva', 't-cambios': 'Cambio de estado', 't-cerradas': 'Cerrada' };
-  const marcar = function () {
-    const sem = document.getElementById('f-semaf').value, tipo = document.getElementById('f-tipo').value;
-    Object.keys(ACT).forEach(function (id) { document.getElementById(id).setAttribute('aria-pressed', String(ACT[id] === sem && (id !== 't-activas' || sem === ''))); });
-    Object.keys(SEM).forEach(function (id) { document.getElementById(id).setAttribute('aria-pressed', String(SEM[id] === tipo)); });
-  };
-  const elegir = function (sel, valor, tarjeta) {
-    const s = document.getElementById(sel);
-    s.value = s.value === valor && valor !== '' ? '' : valor;   // tocar de nuevo el mismo indicador quita el filtro
-    s.dispatchEvent(new Event('change'));
-    marcar();
-    document.getElementById(tarjeta).scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-  };
-  const preparar = function (id, sel, valor, tarjeta, ayuda) {
-    const t = document.getElementById(id);
-    t.dataset.filtro = valor; t.setAttribute('role', 'button'); t.tabIndex = 0; t.title = ayuda;
-    t.addEventListener('click', function () { elegir(sel, valor, tarjeta); });
-    t.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elegir(sel, valor, tarjeta); } });
-  };
-  Object.keys(ACT).forEach(function (id) { preparar(id, 'f-semaf', ACT[id], 'card-activas', 'Ver estas licitaciones en la tabla'); });
-  Object.keys(SEM).forEach(function (id) { preparar(id, 'f-tipo', SEM[id], 'card-mov', 'Ver estos movimientos en la tabla'); });
-  ['f-semaf', 'f-tipo'].forEach(function (id) { document.getElementById(id).addEventListener('change', marcar); });
-  marcar();
-})();
-</script>
+
 </body>
 </html>
