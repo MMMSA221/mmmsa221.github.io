@@ -1,222 +1,964 @@
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Herramientas · Grupo ECIPSA</title>
-<meta name="description" content="Ingreso único a las herramientas del equipo de Grupo ECIPSA.">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><title>Simulador del plan de inversión · Grupo ECIPSA</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M6 3h20l3 3v20l-3 3H6l-3-3V6z' fill='%2328283D'/><path d='M6 3h10v13H3V6z' fill='%23FB7520'/></svg>">
-<link rel="stylesheet" href="/eci.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="/sesion.js"></script>
+<script>ECI.exigir('simulador');</script>
+</head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Urbanist:wght@500;600;700;800&display=swap">
 <style>
-.hoja{max-width:1180px;margin:0 auto;padding:56px 24px 40px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:72px;align-items:start}
-@media (max-width:960px){.hoja{grid-template-columns:1fr;gap:24px;padding-top:28px}.plano{position:static;order:-1;max-width:180px}.plano .calle{display:none}}
-h1{font-family:var(--tit);font-weight:800;font-size:clamp(40px,6vw,64px);line-height:1;letter-spacing:-.02em;color:var(--tinta);margin:0 0 14px}
-.bajada{margin:0 0 40px;font-size:17px;max-width:46ch}
-.plano{position:sticky;top:100px}
-.plano svg{width:100%;height:auto;display:block}
-.plano .borde{fill:none;stroke:var(--linea-fuerte);stroke-width:2}
-.plano .ctx{fill:none;stroke:var(--linea);stroke-width:1}
-.plano .lote{fill:var(--hoja);stroke:var(--linea-fuerte);stroke-width:1.25;cursor:pointer;transition:fill 160ms ease-out}
-.plano .lote.sin{fill:url(#trama);cursor:default}
-.plano .lote.on{fill:var(--naranja);stroke:var(--naranja)}
-.plano text{font-family:var(--tit);font-weight:800;font-size:30px;fill:var(--tinta);pointer-events:none;text-anchor:middle;dominant-baseline:central}
-.plano text.on{fill:#fff}
-.plano text.sin{fill:var(--suave)}
-body.fuera .plano text{display:none}
-.plano .calle{font-family:var(--cuerpo);font-weight:400;font-size:11px;fill:var(--suave);letter-spacing:.02em}
-.plano figcaption{font-size:13px;color:var(--suave);margin-top:10px}
-.ingreso{max-width:400px;display:grid;gap:16px}
-.ingreso .acciones{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px}
-.buscar{margin:0 0 8px;max-width:360px}
-.rotulo{max-width:1180px;margin:0 auto 32px;padding:0 24px}
-.rotulo table{width:100%;border-collapse:collapse;font-size:13px;color:var(--suave)}
-.rotulo td{border:1px solid var(--linea);padding:8px 12px;vertical-align:top}
-.rotulo td span{display:block;font-size:11px}
-.rotulo td b{font-weight:600;color:var(--texto)}
-@media (max-width:640px){.rotulo td:nth-child(n+3){display:none}}
+/* Layout: barra de marca sticky → controles de escenario y filtros → KPIs → franja plurianual → flujo mensual del año foco → Gantt de obras */
+:root{
+  --orange:#FB7520; --orange-ink:#C2530A; --orange-tint:#FFF1E7;
+  --navy:#28283D; --gray:#575756; --light:#F6F6F6; --purple:#9B08BF;
+  --bg:#F6F6F6; --surface:#FFFFFF; --fg:#28283D; --fg-2:#575756; --muted:#7A7A86;
+  --line:#E3E3E8; --line-2:#EEEEF2;
+  --base:#28283D; --sim:#FB7520; --obj:#9B08BF;
+  --good:#1E7F4F; --good-tint:#E6F4EC; --warn:#8A5A00; --warn-tint:#FFF4D6; --bad:#B42318; --bad-tint:#FDECEA;
+  --chip:#EEEEF3;
+  --f-display:"Gilroy","Urbanist",Arial,sans-serif;
+  --f-body:"Open Sans",Arial,sans-serif;
+  --r-sm:8px; --r-md:12px; --r-lg:20px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08); --shadow-md:0 4px 12px rgba(0,0,0,.1); --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1B1B2A; --surface:#24243A; --fg:#F1F1F5; --fg-2:#C9C9D3; --muted:#9A9AAD;
+  --line:#3A3A55; --line-2:#30304A; --base:#B9BCE0; --sim:#FB7520; --obj:#D77BF0;
+  --orange-ink:#FF9A57; --orange-tint:#3A2A22; --chip:#30304A;
+  --good:#6FD3A0; --good-tint:#1F3A2E; --warn:#F2C15A; --warn-tint:#3A3220; --bad:#FF8A80; --bad-tint:#3E2426;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1B1B2A; --surface:#24243A; --fg:#F1F1F5; --fg-2:#C9C9D3; --muted:#9A9AAD;
+  --line:#3A3A55; --line-2:#30304A; --base:#B9BCE0; --sim:#FB7520; --obj:#D77BF0;
+  --orange-ink:#FF9A57; --orange-tint:#3A2A22; --chip:#30304A;
+  --good:#6FD3A0; --good-tint:#1F3A2E; --warn:#F2C15A; --warn-tint:#3A3220; --bad:#FF8A80; --bad-tint:#3E2426;
+  color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+.num{font-variant-numeric:tabular-nums}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+
+/* Barra de marca */
+.brandbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--navy);color:#fff}
+.brandbar .wrap{display:flex;align-items:center;gap:16px;padding-block:12px;flex-wrap:wrap}
+.logo{display:flex;flex-direction:column;line-height:1;font-family:var(--f-display)}
+.logo small{font-size:9px;letter-spacing:.32em;font-weight:600;opacity:.85}
+.logo b{font-size:20px;font-weight:800;letter-spacing:.04em}
+.logo b span{color:var(--orange)}
+.apptitle{border-left:1px solid rgba(255,255,255,.25);padding-left:16px;display:flex;flex-direction:column}
+.apptitle h1{font-size:18px;font-weight:700}
+.apptitle p{margin:0;font-size:12px;opacity:.8}
+.spacer{flex:1}
+.role{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:4px 12px;border-radius:var(--r-sm);background:rgba(255,255,255,.12)}
+.role.ed{background:var(--orange);color:#1b1b1b}
+
+/* Controles */
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding-block:16px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+select,input[type=text],input[type=number]{height:44px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:0 12px;min-width:0}
+select:focus,input:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(251,117,32,.2);outline:none}
+.btn{height:44px;padding:0 16px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:box-shadow .15s ease-out,background .15s ease-out}
+.btn:hover{box-shadow:var(--shadow-md)}
+.btn.primary{background:var(--orange);border-color:var(--orange);color:#1b1b1b}
+.btn.sec{border-color:var(--orange);color:var(--orange-ink)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:end;padding-bottom:16px}
+@media (max-width:900px){.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.scen{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.scen select{min-width:220px}
+.note{font-size:12px;color:var(--muted)}
+.banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--orange-tint);border:1px solid rgba(251,117,32,.35);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px}
+.banner b{font-family:var(--f-display)}
+.inline-form{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px}
+
+/* Años */
+.years{display:flex;gap:4px;flex-wrap:wrap}
+.yr{height:36px;min-width:52px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-variant-numeric:tabular-nums}
+.yr[aria-pressed=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
+:root[data-theme="dark"] .yr[aria-pressed=true]{background:var(--orange);color:#1b1b1b;border-color:var(--orange)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .yr[aria-pressed=true]{background:var(--orange);color:#1b1b1b;border-color:var(--orange)}}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .v{font-family:var(--f-display);font-size:26px;font-weight:700;line-height:1.1}
+.kpi .s{font-size:12px;color:var(--muted)}
+.kpi.hl{outline:2px solid var(--orange);outline-offset:-2px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:baseline}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:var(--r-sm)}
+.pill.up,.pill.down{background:var(--chip);color:var(--fg)}
+.pill.over{background:var(--bad-tint);color:var(--bad)}
+.pill.under{background:var(--good-tint);color:var(--good)}
+.pill.eq{background:var(--chip);color:var(--fg-2)}
+.pill.warn{background:var(--warn-tint);color:var(--warn)}
+.pill.lock{background:var(--chip);color:var(--fg-2)}
+.pill.mod{background:var(--orange-tint);color:var(--orange-ink)}
+
+/* Paneles */
+.panel{background:var(--surface);border-radius:var(--r-md);box-shadow:var(--shadow-sm);padding:16px 24px 20px;margin-bottom:16px;min-width:0}
+.ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ph h2{font-size:20px;font-weight:700}
+.ph .spacer{flex:1}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--fg-2)}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.legend i.line{height:0;border-top:2px solid var(--base);border-radius:0}
+.legend i.dash{height:0;border-top:2px dashed var(--obj);border-radius:0}
+.chartbox{overflow-x:auto}
+svg text{fill:var(--muted);font-family:var(--f-body);font-size:11px}
+svg .grid{stroke:var(--line-2)}
+.macro-bar{cursor:pointer}
+.macro-bar:hover .hit{fill:var(--chip)}
+.readout{font-size:19px;line-height:1.4;color:var(--fg-2);min-height:28px;margin-top:10px}
+.readout b{font-size:23px;color:var(--fg)}
+.readout span.num{font-size:19px}
+@media (max-width:700px){.readout{font-size:16px}.readout b{font-size:19px}.readout span.num{font-size:16px}}
+
+/* Gantt */
+.gantt-tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.toggle{display:inline-flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;min-height:44px}
+.toggle input{width:18px;height:18px;accent-color:var(--orange)}
+.gwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm)}
+.gt{width:100%;border-collapse:collapse;min-width:1180px}
+.gt th,.gt td{border-bottom:1px solid var(--line-2);padding:8px;vertical-align:middle;text-align:left}
+.gt thead th{position:sticky;top:0;background:var(--surface);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);z-index:1}
+.gt .grp td{background:var(--chip);font-family:var(--f-display);font-weight:700;font-size:13px;padding:6px 8px}
+.gt .grp .num{font-family:var(--f-body);font-weight:600}
+.oname{font-weight:600;line-height:1.3;max-width:300px}
+.ometa{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.ometa a{color:var(--orange-ink)}
+.ctl{display:flex;align-items:center;gap:4px}
+.ctl .b{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:16px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.ctl .b:hover:not(:disabled){border-color:var(--orange);color:var(--orange-ink)}
+.ctl .b:disabled{opacity:.35;cursor:not-allowed}
+.ctl input{width:56px;height:32px;text-align:center;padding:0 4px;font-variant-numeric:tabular-nums}
+.ctl-sub{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap}
+.ctl-sub b{color:var(--fg);font-weight:600}
+.ctl.ant{margin-top:6px;gap:6px}.ctl.ant input{width:60px}
+.tl{position:relative;height:40px;display:grid;grid-template-columns:repeat(12,1fr);min-width:480px}
+.tl .m{border-left:1px dashed var(--line-2)}
+.tl .m:first-child{border-left:0}
+.bar-base{position:absolute;top:4px;height:10px;border:1.5px solid var(--base);border-radius:3px;opacity:.55}
+.bar-sim{position:absolute;top:17px;height:18px;background:var(--sim);border-radius:4px;display:flex;align-items:center;justify-content:center;color:#1b1b1b;font-size:10px;font-weight:700;overflow:hidden;white-space:nowrap}
+.bar-sim.lock{background:repeating-linear-gradient(45deg,var(--muted),var(--muted) 4px,var(--line) 4px,var(--line) 8px);color:var(--fg)}
+.bar-sim.zero{background:var(--chip);color:var(--muted);border:1px dashed var(--muted)}
+.cont{position:absolute;top:17px;font-size:10px;color:var(--muted);font-weight:700}
+.cont.l{left:-2px}.cont.r{right:-2px}
+.mhead{display:grid;grid-template-columns:repeat(12,1fr);min-width:480px;font-size:11px;text-align:center}
+.mhead span.now{color:var(--orange-ink);font-weight:700}
+tr.changed td{background:linear-gradient(90deg,var(--orange-tint),transparent 40%)}
+tr.foot td{font-weight:700;background:var(--surface);border-top:2px solid var(--line)}
+.mrow{display:grid;grid-template-columns:repeat(12,1fr);min-width:480px;font-size:10.5px;text-align:center;gap:0}
+.mrow span{padding:2px 0}
+.reset{background:none;border:0;color:var(--orange-ink);cursor:pointer;font-size:12px;font-weight:600;padding:4px;text-decoration:underline}
+.delta{font-weight:600;color:var(--fg)}
+.delta.up::before{content:"▲ ";font-size:.8em;color:var(--orange-ink)}.delta.down::before{content:"▼ ";font-size:.8em;color:var(--base)}
+.search{height:44px;min-width:240px}
+.escmeta{font-size:12px;color:var(--muted);padding-bottom:4px;flex-basis:100%}
+.escmeta .warnx{color:var(--warn);font-weight:600}
+.chg{width:100%;border-collapse:collapse;font-size:13px}
+.chg th,.chg td{padding:8px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+.chg th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+.flowyrs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.flowyrs .fy{background:var(--chip);border-radius:var(--r-sm);padding:8px 12px;display:flex;flex-direction:column;min-width:110px}
+.flowyrs .fy b{font-family:var(--f-display);font-size:16px}
+g[data-k]{outline:none}
+g[data-k]:focus rect.mhit{fill:var(--orange-tint)}
+g[data-k].sel rect.mhit{fill:var(--orange-tint)}
+.importbox{flex-basis:100%;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid rgba(251,117,32,.35);padding-top:12px}
+.importbox ul{margin:4px 0 0;padding-left:18px;font-size:12px;flex-basis:100%}
+@media (max-width:700px){
+  .apptitle p{display:none}
+  .apptitle{padding-left:12px}
+  .apptitle h1{font-size:15px}
+  .brandbar .wrap{flex-wrap:nowrap;padding-block:8px;gap:12px}
+  .logo b{font-size:16px}
+  .role{padding:4px 8px;font-size:10px}
+  .panel{padding:16px}
+  .kpi .v{font-size:21px}
+  .scen .field{flex:1 1 100%}.scen select{min-width:0;width:100%}
+  .search{min-width:0;width:100%}
+}
+footer{padding-block:16px 32px;font-size:12px;color:var(--muted)}
+.toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--navy);color:#fff;padding:12px 16px;border-radius:var(--r-sm);box-shadow:var(--shadow-lg);font-size:13px;z-index:20;max-width:360px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
-</head>
-<body>
+
+<link rel="stylesheet" href="/eci.css">
+<style id="eci-ajustes">
+/* Paleta para desgloses (categorías). Base = navy en línea; Otros = gris neutro */
+:root{--c1:#FB7520;--c2:#3B5BA9;--c3:#9B08BF;--c4:#1E8C7E;--c5:#C9A227;--c6:#D9467A;--c7:#6E7D91;--c8:#B8B8C4}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--c2:#7C97E0;--c3:#C66BEA;--c4:#3FB8A8;--c5:#E3C24F;--c6:#F07AA3;--c7:#9AA8BA;--c8:#6A6A80}}
+:root[data-theme="dark"]{--c2:#7C97E0;--c3:#C66BEA;--c4:#3FB8A8;--c5:#E3C24F;--c6:#F07AA3;--c7:#9AA8BA;--c8:#6A6A80}
+.emp-rev{color:var(--warn);font-weight:600}.emp-ok{color:var(--muted)}
+#empTable select{height:36px;max-width:360px;width:100%}
+.paises{display:flex;gap:0;border-bottom:1px solid var(--line);margin:4px 0 14px}
+.paises button{height:44px;padding:0 18px;border:0;background:none;cursor:pointer;font:inherit;font-family:var(--f-display);font-weight:700;font-size:16px;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.paises button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--orange)}
+.paises button:hover{color:var(--fg)}
+.cac{display:inline-block;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:2px 8px;margin-left:6px;color:var(--fg-2);vertical-align:middle}
+.bd-ctl{display:flex;align-items:center;gap:8px;font-size:13px}
+.bd-ctl select{height:36px}
+.bd-legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;color:var(--fg-2);margin:10px 0 0;line-height:1.4}
+.bd-legend b{color:var(--fg);font-weight:600}
+.bd-legend i{width:12px!important;height:12px!important}
+.legmore{background:none;border:0;color:var(--orange-ink);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;padding:0}
+.bd-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.mdet{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+.mdet h3{font-family:var(--f-display);font-size:17px;margin:0 0 8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.mdet h3 .note{font-family:var(--f-body);font-weight:400}
+.mdet table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+.mdet th,.mdet td{padding:6px 8px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+.mdet th{font-size:12px;color:var(--muted);font-weight:600}
+.mdet td.r,.mdet th.r{text-align:right;font-variant-numeric:tabular-nums}
+.mdet tr.cat td{background:var(--chip);font-weight:700}
+.mdet tr.cat td:first-child i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;vertical-align:middle}
+.mdet .share{display:inline-block;height:6px;border-radius:3px;background:var(--line);width:80px;vertical-align:middle;margin-left:8px;position:relative;overflow:hidden}
+.mdet .share b{position:absolute;inset:0 auto 0 0;background:var(--fg-2)}
+.mdet .x{background:none;border:0;color:var(--orange-ink);cursor:pointer;font-weight:600;text-decoration:underline;padding:4px}
+
+/* Ajustes al sistema visual común (eci.css): planilla técnica en lugar de tarjetas */
+:root{--r-sm:6px;--r-md:6px;--r-lg:6px;--shadow-sm:none;--shadow-md:none;--shadow-lg:0 8px 24px rgba(0,0,0,.12);--f-display:'Gilroy','Urbanist',Arial,sans-serif}
+body{font-family:var(--f-body);font-size:14.5px}
+.titulo-sim{padding-top:36px;padding-bottom:8px}
+.titulo-sim h1{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,4.6vw,52px);line-height:1;letter-spacing:-.02em;color:var(--fg);margin:0 0 10px}
+.titulo-sim p{margin:0;max-width:60ch;color:var(--fg-2);font-size:16px}
+.eci-usuario .role{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 8px;margin-right:6px;background:none;text-transform:none;letter-spacing:0}
+.field label,.lbl,.gt thead th,.chg th,.kpi .lbl,.pill,.mhead,.legend{text-transform:none!important;letter-spacing:0!important}
+.field label,.lbl{font-size:13px;font-weight:600;color:var(--fg-2)}
+.panel{box-shadow:none;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.ph h2{font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:-.01em}
+.kpis{gap:0;border-top:2px solid var(--fg);border-bottom:1px solid var(--line);background:none}
+.kpi{box-shadow:none;border:0;border-radius:0;background:none;border-right:1px solid var(--line);padding:14px 18px}
+.kpi:last-child{border-right:0}
+.kpis .kpi.hl{border:0!important;border-right:1px solid var(--line)!important;outline:0!important;background:none!important;box-shadow:inset 0 3px 0 var(--sim)!important}
+.kpi .v{font-family:var(--f-display);font-weight:800;letter-spacing:-.01em}
+.banner{border:0;border-left:3px solid var(--orange);border-radius:0;background:var(--surface)}
+.btn{border-radius:6px}
+.yr{border-radius:4px}
+.gt thead th{font-weight:600;color:var(--muted)}
+.pill{border-radius:4px;font-weight:600}
+select,input[type=text],input[type=number]{border-radius:6px}
+footer{border-top:1px solid var(--line)}
+@media (min-width:700px){.chartbox{overflow:hidden}.chartbox svg{max-width:100%}}
+@media (max-width:1000px){.kpi{border-right:0;border-bottom:1px solid var(--line)}}
+</style>
+
 <header class="eci-barra">
   <div class="eci-barra-in">
-    <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, inicio"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta">Herramientas del equipo</span>
-    <div class="eci-usuario" id="usr" hidden><span class="nombre" id="uNom"></span><button class="eci-link" id="bClave">Cambiar contraseña</button><button class="eci-link" id="bSalir">Salir</button></div>
+    <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 j</span></span>
+    <div class="eci-usuario"><span class="nombre" id="uNom"></span><span class="role" id="role">Visualizador</span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
+<div class="wrap titulo-sim"><h1>Plan de inversión</h1>
+  <nav class="paises" role="tablist" aria-label="País">
+    <button type="button" role="tab" id="tabAR" data-pais="AR" aria-selected="true">Natania Argentina</button>
+    <button type="button" role="tab" id="tabPY" data-pais="PY" aria-selected="false">Natania Paraguay</button>
+  </nav>
+  <p id="subtit"></p></div>
 
-<main class="hoja">
-  <div>
-    <section id="vLogin" hidden aria-labelledby="lT">
-      <h1 id="lT">Ingresar</h1>
-      <p class="bajada">Un solo ingreso para todas las herramientas del equipo. Usá el mail y la contraseña que te dio el administrador.</p>
-      <form id="fLogin" class="ingreso" novalidate>
-        <label class="eci-campo">Mail<input type="email" id="lMail" autocomplete="username" required></label>
-        <label class="eci-campo">Contraseña<input type="password" id="lClave" autocomplete="current-password" required></label>
-        <div class="acciones"><button class="eci-btn pri" id="bIngresar" type="submit">Ingresar</button><button class="eci-link" id="bOlvide" type="button">Olvidé mi contraseña</button></div>
-        <div id="lMsg" aria-live="polite"></div>
-      </form>
-    </section>
 
-    <section id="vClave" hidden aria-labelledby="cT">
-      <h1 id="cT">Contraseña nueva</h1>
-      <p class="bajada">Mínimo 8 caracteres.</p>
-      <form id="fClave" class="ingreso" novalidate>
-        <label class="eci-campo">Contraseña nueva<input type="password" id="c1" autocomplete="new-password" minlength="8" required></label>
-        <label class="eci-campo">Repetila<input type="password" id="c2" autocomplete="new-password" minlength="8" required></label>
-        <div class="acciones"><button class="eci-btn pri" type="submit">Guardar contraseña</button><button class="eci-link" id="bCancClave" type="button">Cancelar</button></div>
-        <div id="cMsg" aria-live="polite"></div>
-      </form>
-    </section>
+<main class="wrap">
+  <section class="toolbar" aria-label="Escenario">
+    <div class="scen">
+      <div class="field"><label for="selEsc">Escenario</label>
+        <select id="selEsc"></select></div>
+      <div class="field"><label for="selRef">Comparar contra</label>
+        <select id="selRef"></select></div>
+      <button class="btn ghost" id="btnUndo" type="button" disabled title="Deshacer (Ctrl+Z)">↶ Deshacer</button>
+      <button class="btn primary" id="btnSave" type="button">Guardar escenario</button>
+      <button class="btn sec" id="btnSaveOver" type="button" hidden>Guardar cambios</button>
+      <button class="btn ghost" id="btnReset" type="button">Volver a la base</button>
+      <button class="btn danger" id="btnDel" type="button" hidden>Borrar</button>
+      <button class="btn ghost" id="btnAdm" type="button" hidden>Escenarios guardados</button>
+      <div class="escmeta" id="escMeta"></div>
+    </div>
+    <div class="spacer" style="flex:1"></div>
+    <div class="field"><span class="lbl">Año foco</span><div class="years" id="years"></div></div>
+  </section>
 
-    <section id="vHall" hidden aria-labelledby="hT">
-      <h1 id="hT">Herramientas</h1>
-      <p class="bajada" id="bajada"></p>
-      <div id="hMsg"></div>
-      <label class="eci-campo buscar" id="buscarBox" hidden><span style="position:absolute;left:-9999px">Buscar herramienta</span><input type="search" id="q" placeholder="Buscar herramienta" autocomplete="off"></label>
-      <ol class="eci-indice" id="grid"></ol>
-      <p id="vacio" style="display:none;padding:20px 4px">Ninguna herramienta coincide con la búsqueda.</p>
-    </section>
+  <div class="inline-form" id="saveForm" hidden>
+    <div class="field" style="flex:1;min-width:220px"><label for="escName">Nombre del escenario</label>
+      <input type="text" id="escName" maxlength="80" placeholder="Ej.: Atraso N80 Viviendas"></div>
+    <button class="btn primary" id="saveOk" type="button">Guardar</button>
+    <button class="btn ghost" id="saveCancel" type="button">Cancelar</button>
+    <span class="note" id="saveErr" style="flex-basis:100%;color:var(--bad)" hidden></span>
+  </div>
+  <div class="inline-form" id="discardForm" hidden>
+    <span>Tenés cambios sin guardar. Si seguís, se pierden.</span>
+    <button class="btn danger" id="discardOk" type="button">Descartar y seguir</button>
+    <button class="btn ghost" id="discardCancel" type="button">Volver</button>
+  </div>
+  <div class="inline-form" id="admBox" hidden style="flex-direction:column;align-items:stretch">
+    <div style="display:flex;align-items:baseline;gap:12px"><b>Escenarios guardados</b><span class="note" id="admNote"></span><span class="spacer" style="flex:1"></span><button class="btn ghost" id="admClose" type="button">Cerrar</button></div>
+    <div class="gwrap"><table class="chg" id="admTable"></table></div>
+  </div>
+  <div class="inline-form" id="delForm" hidden>
+    <span>¿Borrar el escenario <b id="delName"></b>? No se puede deshacer.</span>
+    <button class="btn danger" id="delOk" type="button">Sí, borrar</button>
+    <button class="btn ghost" id="delCancel" type="button">Cancelar</button>
   </div>
 
-  <figure class="plano" aria-hidden="true">
-    <svg viewBox="0 0 420 540" id="plano">
-      <defs><pattern id="trama" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="currentColor" stroke-opacity=".18" stroke-width="2"/></pattern></defs>
-      <path class="borde" d="M64 40H356L380 64V476L356 500H64L40 476V64Z"/>
-      <path class="ctx" d="M40 330H210V410H40M40 410H210M210 190V500M210 280H380M210 370H380"/>
-      <path class="lote" data-l="A" d="M64 40H210V170H40V64Z"/>
-      <path class="lote" data-l="B" d="M40 170H210V250H40Z"/>
-      <path class="lote" data-l="C" d="M40 250H210V330H40Z"/>
-      <path class="lote" data-l="D" d="M210 40H356L380 64V190H210Z"/>
-      <text data-t="A" x="128" y="108">A</text><text data-t="B" x="125" y="210">B</text><text data-t="C" x="125" y="290">C</text><text data-t="D" x="292" y="118">D</text>
-    </svg>
-  </figure>
+  <div class="banner" id="sampleBanner">
+    <b>Cargando obras…</b>
+    <span id="dataSrc">Buscando la base de obras guardada.</span>
+    <span class="spacer" style="flex:1"></span>
+    <button class="btn ghost" id="empOpen" type="button" hidden>Emprendimientos</button>
+    <label class="btn sec" id="empLbl" for="empIn" hidden>Cargar listado de emprendimientos</label>
+    <input type="file" id="empIn" accept=".xlsx,.xls" hidden>
+    <label class="btn sec" id="importLbl" for="fileIn" hidden>Cargar Excel de obras</label>
+    <input type="file" id="fileIn" accept=".xlsx,.xls" hidden>
+    <div class="importbox" id="importBox" hidden>
+      <span id="importTxt"></span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn primary" id="importOk" type="button">Reemplazar la base</button>
+      <button class="btn ghost" id="importCancel" type="button">Cancelar</button>
+      <ul id="importList"></ul>
+    </div>
+    <div class="importbox" id="empBox" hidden>
+      <span id="empTxt"></span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn primary" id="empOk" type="button">Guardar asignaciones</button>
+      <button class="btn ghost" id="empCancel" type="button">Cerrar</button>
+      <div class="gwrap" style="flex-basis:100%"><table class="chg" id="empTable"></table></div>
+    </div>
+  </div>
+
+  <section class="filters" aria-label="Filtros">
+    <div class="field"><label for="fProv">Provincia</label><select id="fProv"></select></div>
+    <div class="field"><label for="fUn">Unidad de negocio</label><select id="fUn"></select></div>
+    <div class="field"><label for="fEmp">Emprendimiento</label><select id="fEmp"></select></div>
+    <div class="field"><label for="fTipo">Tipo de obra</label><select id="fTipo"></select></div>
+    <button class="btn ghost" id="fClear" type="button">Limpiar filtros</button>
+  </section>
+
+  <section class="kpis" id="kpis" aria-live="polite"></section>
+
+  <section class="panel" id="chgPanel" hidden>
+    <div class="ph"><h2>Cambios del escenario</h2><span class="note" id="chgNote"></span></div>
+    <div class="flowyrs" id="chgYears"></div>
+    <div class="gwrap"><table class="chg" id="chgTable"></table></div>
+  </section>
+
+  <section class="panel">
+    <div class="ph"><h2 id="macroTitle">Inversión por año · 2026–2036</h2><span class="note">Tocá un año para ponerlo en foco</span><span class="spacer"></span>
+      <div class="legend"><span><i style="background:var(--base);opacity:.35"></i><span class="refName">Base (Planner)</span></span><span><i style="background:var(--sim)"></i>Simulación</span><span><i class="dash"></i>Objetivo</span></div></div>
+    <div class="chartbox"><svg id="macro" role="img" aria-label="Inversión anual base versus simulación"></svg></div>
+  </section>
+
+  <section class="panel">
+    <div class="ph"><h2 id="mTitle">Flujo mensual</h2><label class="bd-ctl" for="selDim">Desglosar por <select id="selDim"><option value="">Sin desglose</option><option value="t" selected>Tipo de obra</option><option value="p">Emprendimiento</option><option value="pr">Provincia</option><option value="o">Obra</option></select></label><span class="spacer"></span>
+      <div class="legend"><span><i style="background:var(--sim)"></i>Simulación</span><span><i class="line"></i><span class="refName">Base (Planner)</span></span><span><i class="dash"></i>Objetivo mensual (anual ÷ 12)</span></div></div>
+    <div class="chartbox"><svg id="monthly" role="img" aria-label="Flujo mensual del año foco"></svg></div>
+    <div class="bd-legend" id="bdLegend"></div>
+    <div class="readout" id="readout">Pasá el cursor por un mes para ver el detalle.</div>
+    <div class="mdet gwrap" id="mDetail" hidden></div>
+    <div class="inline-form" style="margin:12px 0 0" id="objBox">
+      <div class="field"><label for="objIn" id="objLbl">Presupuesto objetivo anual</label>
+        <input type="text" id="objIn" inputmode="numeric" placeholder="Ej.: 8.000.000.000" style="width:220px"></div>
+      <button class="btn sec" id="objSave" type="button">Guardar objetivo</button>
+      <span class="note" id="objNote"></span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="ph"><h2>Obras</h2><span class="note" id="gCount"></span><span class="spacer"></span>
+      <div class="gantt-tools">
+        <input type="text" class="search" id="q" placeholder="Buscar obra o emprendimiento" aria-label="Buscar obra o emprendimiento">
+        <label class="toggle"><input type="checkbox" id="onlyYear" checked> Solo obras del año foco</label>
+        <label class="toggle"><input type="checkbox" id="onlyChanged"> Solo obras movidas</label>
+      </div></div>
+    <p class="note" style="margin:0 0 12px">Inicio: corré la obra de a meses con − / + o escribí el desplazamiento (ej. 6 o −2). Plazo: cambiá la duración en meses. Edificios: se reparten con la curva de inversión (base 24 meses, recalculada al plazo); el anticipo (%) se paga en el mes de inicio y el resto sigue la curva. Las obras con avance mayor a 0% están bloqueadas. Ninguna obra puede empezar antes del mes en curso.</p>
+    <div class="gwrap"><table class="gt" id="gt"></table></div>
+  </section>
+
+  <footer id="pie">Reparto: Edificios con curva de inversión; el resto en partes iguales por mes. Montos en pesos constantes al último CAC publicado · Fuente: Planner Premium (Costos Obras).</footer>
 </main>
+<div class="toast" id="toast" hidden></div>
 
-<footer class="rotulo">
-  <table><tr>
-    <td><span>Comitente</span><b>Grupo ECIPSA</b></td>
-    <td><span>Legajo</span><b>Herramientas del equipo</b></td>
-    <td><span>Usuario</span><b id="rUsr">Sin ingresar</b></td>
-    <td><span>Fecha</span><b id="rFecha"></b></td>
-  </tr></table>
-</footer>
+<script id="sample" type="application/json">[]</script>
 <script>
-/* ═══ Herramientas ═══
-   herr: código de permiso (lista public.accesos). Sin herr: herramienta externa con su propio ingreso. */
-const HERRAMIENTAS = [
-  { letra: 'A', herr: 'cabida', nombre: 'Análisis de Cabida', area: 'Planeamiento, Córdoba y Salta',
-    desc: 'Normativa de cada lote, cabida máxima en m², cocheras y aprobaciones, y la cartera de lotes en análisis.', url: '/AnalisisCabida/' },
-  { letra: 'B', herr: 'simulador', nombre: 'Simulación de Plan de Inversión', area: 'Finanzas e inversiones',
-    desc: 'Escenarios del plan de inversión de obras: mové obras en el tiempo y compará contra la base de Planner.', url: '/simulador/' },
-  { letra: 'C', herr: 'licitaciones', nombre: 'Licitaciones', area: 'Abastecimiento Estratégico (Compras)',
-    desc: 'Estado de cada licitación de Abastecimiento Estratégico: plazos, etapas, cambios de la semana e histórico.', url: '/licitaciones/' },
-  { letra: 'D', nombre: 'Tablero de Loteos Natania 360', area: 'Loteos Natania',
-    desc: 'Stock de lotes, infraestructura y avance de cada emprendimiento.', url: 'https://mmmsa221.github.io/Ecipsa-Loteos/', nota: 'Tiene su propio ingreso' }
-];
-const NOMBRES = { cabida: 'Análisis de Cabida', simulador: 'Simulación de Plan de Inversión', licitaciones: 'Estado de Licitaciones' };
-
-const $ = function (id) { return document.getElementById(id); };
-const esc = function (t) { return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-const sinTilde = function (t) { return String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); };
-const params = new URLSearchParams(location.search);
-let U = null, recuperando = false;
-
-function ver(v) { ['vLogin', 'vClave', 'vHall'].forEach(function (id) { $(id).hidden = id !== v; }); $('usr').hidden = !U; document.body.classList.toggle('fuera', !U);
-  $('buscarBox').hidden = HERRAMIENTAS.length < 7; }  // el buscador aparece recién cuando hay muchas herramientas
-function msg(id, tipo, t) { $(id).innerHTML = t ? '<p class="eci-aviso ' + (tipo === 'err' ? 'error' : 'ok') + '">' + esc(t) + '</p>' : ''; }
-
-function pintar() {
-  const q = sinTilde($('q').value.trim());
-  const puede = function (h) { return !h.herr || U.herramientas.indexOf(h.herr) >= 0; };
-  const lista = HERRAMIENTAS.filter(puede).filter(function (h) { return !q || sinTilde([h.letra, h.nombre, h.area, h.desc].join(' ')).indexOf(q) >= 0; });
-  $('grid').innerHTML = lista.map(function (h) {
-    const det = h.area + (h.nota ? '. ' + h.nota + '.' : '');
-    return '<li class="eci-lamina" data-l="' + esc(h.letra) + '"><a href="' + esc(h.url) + '" target="_blank" rel="noopener">' +
-      '<span class="cod" aria-hidden="true">' + esc(h.letra) + '</span>' +
-      '<h2>' + esc(h.nombre) + '</h2>' +
-      '<span class="abrir">Abrir</span>' +
-      '<p>' + esc(h.desc) + '<span class="det">' + esc(det) + '</span></p></a></li>';
-  }).join('');
-  $('vacio').style.display = lista.length ? 'none' : 'block';
-  // Plano: cada herramienta es un lote de la manzana; las que no tiene asignadas quedan rayadas
-  HERRAMIENTAS.forEach(function (h) {
-    const lote = document.querySelector('.lote[data-l="' + h.letra + '"]'), t = document.querySelector('[data-t="' + h.letra + '"]');
-    if (!lote) return;
-    const ok = puede(h);
-    lote.classList.toggle('sin', !ok); t.classList.toggle('sin', !ok);
-    lote.onclick = ok ? function () { window.open(h.url, '_blank', 'noopener'); } : null;
-  });
-  $('grid').querySelectorAll('.eci-lamina').forEach(function (li) {
-    const on = function (v) { return function () { marcar(v ? li.dataset.l : null); }; };
-    li.addEventListener('mouseenter', on(true)); li.addEventListener('mouseleave', on(false));
-    li.addEventListener('focusin', on(true)); li.addEventListener('focusout', on(false));
-  });
-}
-function marcar(letra) {
-  document.querySelectorAll('.lote').forEach(function (l) { const on = l.dataset.l === letra && !l.classList.contains('sin'); l.classList.toggle('on', on); document.querySelector('[data-t="' + l.dataset.l + '"]').classList.toggle('on', on); });
-  document.querySelectorAll('.eci-lamina').forEach(function (li) { li.classList.toggle('activa', li.dataset.l === letra); });
-}
-document.querySelectorAll('.lote').forEach(function (l) {
-  l.addEventListener('mouseenter', function () { if (!l.classList.contains('sin') && U) marcar(l.dataset.l); });
-  l.addEventListener('mouseleave', function () { marcar(null); });
-});
-
-async function entrar(s) {
-  U = ECI.usuario(s);
-  $('uNom').textContent = U.nombre; $('rUsr').textContent = U.nombre;
-  const volver = params.get('volver');
-  if (volver && /^\/[^\/]/.test(volver)) { location.replace(volver); return; }   // solo rutas del mismo sitio
-  $('bajada').textContent = 'Hola, ' + U.nombre.split(' ')[0] + '. Cada herramienta se abre en una pestaña nueva, con tu misma sesión.';
-  ver('vHall'); pintar();
-  if (params.get('sin')) msg('hMsg', 'err', 'Tu usuario no tiene acceso a ' + (NOMBRES[params.get('sin')] || 'esa herramienta') + '. Pedíselo al administrador.');
-  if (!U.herramientas.length) msg('hMsg', 'err', 'Tu usuario todavía no tiene herramientas asignadas. Pedíselo al administrador.');
-  try { history.replaceState(null, '', location.pathname); } catch (e) { }
-}
-
-$('fLogin').addEventListener('submit', async function (e) {
-  e.preventDefault(); msg('lMsg');
-  const mail = $('lMail').value.trim().toLowerCase(), clave = $('lClave').value;
-  if (!mail || !clave) { msg('lMsg', 'err', 'Completá mail y contraseña.'); return; }
-  $('bIngresar').disabled = true;
-  const r = await ECI.client.auth.signInWithPassword({ email: mail, password: clave });
-  $('bIngresar').disabled = false;
-  if (r.error) { msg('lMsg', 'err', /invalid/i.test(r.error.message) ? 'Mail o contraseña incorrectos.' : 'No se pudo ingresar: ' + r.error.message); return; }
-  $('lClave').value = ''; entrar(r.data.session);
-});
-$('bOlvide').onclick = async function () {
-  const mail = $('lMail').value.trim().toLowerCase();
-  if (!mail) { msg('lMsg', 'err', 'Escribí tu mail arriba y tocá de nuevo “Olvidé mi contraseña”.'); return; }
-  const r = await ECI.client.auth.resetPasswordForEmail(mail, { redirectTo: location.origin + '/' });
-  msg('lMsg', r.error ? 'err' : 'ok', r.error ? 'No se pudo enviar: ' + r.error.message : 'Si el mail está dado de alta, te llega un link para elegir una contraseña nueva.');
-};
-$('bClave').onclick = function () { msg('cMsg'); ver('vClave'); $('c1').focus(); };
-$('bCancClave').onclick = function () { if (U) { ver('vHall'); pintar(); } else ver('vLogin'); };
-$('fClave').addEventListener('submit', async function (e) {
-  e.preventDefault();
-  const a = $('c1').value, b = $('c2').value;
-  if (a.length < 8) { msg('cMsg', 'err', 'Tiene que tener al menos 8 caracteres.'); return; }
-  if (a !== b) { msg('cMsg', 'err', 'Las dos contraseñas no coinciden.'); return; }
-  const r = await ECI.client.auth.updateUser({ password: a });
-  if (r.error) { msg('cMsg', 'err', 'No se pudo cambiar: ' + r.error.message); return; }
-  $('c1').value = $('c2').value = '';
-  const s = await ECI.sesion(); if (s) { await entrar(s); msg('hMsg', 'ok', 'Contraseña actualizada.'); }
-});
-$('bSalir').onclick = function () { ECI.salir(); };
-$('q').addEventListener('input', pintar);
-$('rFecha').textContent = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
-
-// Volver desde el mail de recuperación: pide la contraseña nueva
-ECI.client.auth.onAuthStateChange(function (ev, s) {
-  if (ev === 'PASSWORD_RECOVERY') { recuperando = true; U = ECI.usuario(s); $('uNom').textContent = U ? U.nombre : ''; ver('vClave'); msg('cMsg', 'ok', 'Elegí tu contraseña nueva.'); }
-});
-(async function () {
-  const s = await ECI.sesion();
-  if (recuperando || location.hash.indexOf('type=recovery') >= 0) return;
-  if (s) entrar(s); else { ver('vLogin'); $('lMail').focus(); }
+/* Reemplazo de la base de Claude: misma interfaz (collection/doc/onSnapshot/set/update/delete) sobre la tabla public.docs de Supabase */
+(function () {
+  const APP = 'simulador', L = [];
+  const api = async function (path, o) {
+    o = o || {}; const h = Object.assign(await ECI.headers(), { 'Content-Type': 'application/json' }); if (o.prefer) h.Prefer = o.prefer;
+    const r = await fetch(ECI.SB_URL + '/rest/v1/' + path, { method: o.method || 'GET', headers: h, body: o.body ? JSON.stringify(o.body) : undefined });
+    if (!r.ok) { let m = ''; try { m = (await r.json()).message; } catch (e) { } throw new Error(m || 'Error ' + r.status); }
+    return r.status === 204 ? null : r.json().catch(function () { return null; });
+  };
+  const q = function (col, id) { return 'docs?app=eq.' + APP + '&coleccion=eq.' + encodeURIComponent(col) + (id != null ? '&id=eq.' + encodeURIComponent(id) : ''); };
+  const nuevoId = function () { return Math.random().toString(36).slice(2, 12) + Date.now().toString(36); };
+  async function avisar() { for (const f of L) { try { await f(); } catch (e) { } } }
+  function docRef(col, id) {
+    return {
+      id: id,
+      set: async function (data) { await api('docs?on_conflict=app,coleccion,id', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: { app: APP, coleccion: col, id: id, data: data } }); avisar(); },
+      update: async function (parcial) { const r = await api(q(col, id) + '&select=data'); const prev = r && r[0] ? r[0].data : {}; await this.set(Object.assign({}, prev, parcial)); },
+      delete: async function () { const r = await api(q(col, id), { method: 'DELETE', prefer: 'return=representation' }); if (!r || !r.length) { const ex = await api(q(col, id) + '&select=id'); if (ex && ex.length) throw new Error('la base de datos no permitió borrarlo (falta el permiso de borrado para editores)'); } avisar(); },
+      onSnapshot: function (cb, err) {
+        let ultimo = null;
+        const f = async function () { const r = await api(q(col, id) + '&select=data'); const k = JSON.stringify(r); if (k === ultimo) return; ultimo = k; cb({ exists: !!(r && r[0]), data: function () { return r && r[0] ? r[0].data : undefined; } }); };
+        L.push(f); f().catch(function (e) { if (err) err(e); });
+      }
+    };
+  }
+  const DB = {
+    collection: function (col) {
+      return {
+        doc: function (id) { return docRef(col, id || nuevoId()); },
+        onSnapshot: function (cb, err) {
+          let ultimo = null;
+          const f = async function () { const r = await api(q(col) + '&select=id,data') || []; const k = JSON.stringify(r); if (k === ultimo) return; ultimo = k; cb({ docs: r.map(function (x) { return { id: x.id, data: function () { return x.data; } }; }) }); };
+          L.push(f); f().catch(function (e) { if (err) err(e); });
+        }
+      };
+    },
+    doc: function (path) { const p = path.split('/'); return docRef(p[0], p[1]); }
+  };
+  setInterval(function () { if (!document.hidden) avisar(); }, 30000);   // trae cambios de otros usuarios cada 30 s
+  window.claude = { use: async function (k) {
+    const x = await ECI.listo; const u = x.usuario;
+    document.getElementById('uNom').textContent = u.nombre;
+    if (k === 'db') return DB;
+    // Editor: rol admin o la marca 'simulador-editor' en sus herramientas. El resto es Visualizador (simula, no guarda).
+    const editor = u.rol === 'admin' || (u.herramientas || []).indexOf('simulador-editor') >= 0;
+    if (k === 'user') return { id: async function () { return u.nombre; }, can: async function () { return editor; }, profiles: async function (ids) { const o = {}; ids.forEach(function (i) { o[i] = { name: i }; }); return o; } };
+    return null;
+  } };
 })();
 </script>
-</body>
-</html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+const Y0=2026, YMIN_END=2036; let Y1=YMIN_END;
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const today=new Date(); const NOW=today.getFullYear()*12+today.getMonth();
+const $=id=>document.getElementById(id);
+const nf=(v,d)=>v.toLocaleString('es-AR',{maximumFractionDigits:d,minimumFractionDigits:0});
+// Unidades: millones (M) y miles de millones como "mil M"
+// Moneda: Argentina en pesos constantes (CAC); Paraguay en dólares
+const CAC_BASE='agosto 2026';let PAIS='AR';try{PAIS=localStorage.getItem('sim-pais')==='PY'?'PY':'AR'}catch(e){}
+const CUR=()=>PAIS==='PY'?'US$ ':'$ ';
+const fmtM=v=>{const m=v/1e6, a=Math.abs(m); return CUR()+nf(m,a>=100?0:a>=1?1:2)+' M'};
+const fmtBig=v=>Math.abs(v)>=1e9?CUR()+nf(v/1e9,1)+' mil M':fmtM(v);
+const fmt$=v=>CUR()+Math.round(v).toLocaleString('es-AR');
+const mLabel=i=>MES[((i%12)+12)%12]+'-'+String(Math.floor(i/12)).slice(2);
+const mi=s=>{const [y,m]=s.split('-').map(Number);return y*12+m-1};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---------- estado ----------
+let OBRAS=[];
+const S={changes:{}, hist:[], year:2027, esc:null, ref:null, escList:[], obj:{}, canWrite:false, db:null, user:null, uid:null, dirty:false,
+  f:{prov:'',un:'',emp:'',tipo:''}, q:'', onlyYear:true, onlyChanged:false, selMonth:null, names:{}, pendingImport:null};
+
+function prep(list){
+  return list.map(o=>{const s=mi(o.ini), e=mi(o.fin); return Object.assign({},o,{s0:s,d0:Math.max(1,e-s+1),lock:(+o.pct||0)>0})});
+}
+OBRAS=prep(JSON.parse($('sample').textContent));
+S.year=Math.max(Y0,Math.floor(NOW/12));
+
+// ---------- motor de cálculo ----------
+// Reparto: Edificios con curva de inversión (base 24 meses, recalculada al plazo y con anticipo); el resto en partes iguales.
+// Curva base de Edificios: % mensual sin anticipo (Excel "PROGRAMACION TIPO AP", hoja CERTIFICACION TIPO AP, fila 5)
+const CURVA_ED=[.018,.02,.021,.021,.021,.022,.024,.029,.042,.044,.046,.054,.06,.062,.071,.078,.071,.07,.058,.051,.046,.03,.024,.017];
+const esEdificio=o=>/^edificio/i.test(String(o.t||'').trim());
+// Recálculo para otro plazo (fórmula de Manuel, filas 49-62): el mes j del plazo nuevo equivale al punto t=j·24/N de la curva base;
+// el acumulado se interpola en línea recta y el mensual sale por diferencia. Con anticipo: el anticipo cae en el mes de inicio
+// y cada mes de obra se multiplica por (1 − anticipo). Siempre suma 100 %.
+const _curvas=new Map();
+function curvaPct(base,dur,ant){
+  const key=base.length+'|'+dur+'|'+ant;if(_curvas.has(key))return _curvas.get(key);
+  const n=base.length,acc=[0];base.forEach((v,i)=>acc.push(acc[i]+v));
+  const ac=t=>{if(t>=n)return 1;const k=Math.floor(t);return acc[k]+base[k]*(t-k)};
+  const r=n/dur,out=[];for(let j=1;j<=dur;j++)out.push((ac(j*r)-ac((j-1)*r))*(1-ant));
+  out[0]+=ant;_curvas.set(key,out);return out;
+}
+function distribuir(obra, dur, ant){
+  if(esEdificio(obra))return curvaPct(CURVA_ED,dur,ant||0).map(x=>x*obra.m);
+  const p=obra.m/dur; return Array.from({length:dur},()=>p);
+}
+function plan(o, ch){
+  const c=ch&&ch[o.id]||{};
+  if(o.lock) return {s:o.s0,d:o.d0,a:0};
+  return {s:o.s0+(c.s||0), d:Math.max(1,o.d0+(c.d||0)), a:esEdificio(o)?(c.a||0):0};
+}
+function minShift(o){ return o.s0>=NOW ? NOW-o.s0 : 0; }
+// Única restricción: no empezar antes del mes en curso y durar al menos 1 mes. Sin tope de años.
+function clampChange(o,s,d,a){
+  s=Math.round(s||0); d=Math.round(d||0);
+  if(o.d0+d<1)d=1-o.d0;
+  s=Math.max(minShift(o),s);
+  a=esEdificio(o)?Math.min(1,Math.max(0,Math.round((+a||0)*1000)/1000)):0;  // anticipo: fracción 0–1, solo Edificios
+  const r={s,d};if(a)r.a=a;return r;
+}
+// El horizonte se estira solo hasta el último año con inversión (mínimo 2036)
+function updHorizon(){let y=YMIN_END;const rc=refCh();OBRAS.forEach(o=>{[S.changes,rc,null].forEach(ch=>{const p=plan(o,ch);y=Math.max(y,Math.floor((p.s+p.d-1)/12))})});Y1=y;if(S.year>Y1)S.year=Y1}
+function series(list, ch){
+  const out=new Map();
+  list.forEach(o=>{const p=plan(o,ch);const v=distribuir(o,p.d,p.a);v.forEach((x,k)=>{const m=p.s+k;out.set(m,(out.get(m)||0)+x)})});
+  return out;
+}
+const yearSum=(ser,y)=>{let t=0;for(let k=0;k<12;k++)t+=ser.get(y*12+k)||0;return t};
+function yearOf(o,ch,y){const p=plan(o,ch),d=distribuir(o,p.d,p.a);let t=0;for(let k=0;k<p.d;k++){const m=p.s+k;if(Math.floor(m/12)===y)t+=d[k]}return t}
+function filtered(){
+  const f=S.f; return OBRAS.filter(o=>(!f.prov||o.pr===f.prov)&&(!f.un||o.un===f.un)&&(!f.emp||o.em===f.emp)&&(!f.tipo||o.t===f.tipo));
+}
+const refCh=()=>{if(!S.ref)return null;const r=S.escList.find(x=>x.id===S.ref);return r?r.cambios||{}:null};
+const refName=()=>{if(!S.ref)return 'Base (Planner)';const r=S.escList.find(x=>x.id===S.ref);return r?r.nombre:'Base (Planner)'};
+const samePlan=(a,b)=>a.s===b.s&&a.d===b.d&&(a.a||0)===(b.a||0);
+const isChanged=o=>{const c=S.changes[o.id];return !o.lock&&c&&((c.s||0)!==0||(c.d||0)!==0||(esEdificio(o)&&(c.a||0)!==0))};
+const differs=(o,rc)=>!samePlan(plan(o,S.changes),plan(o,rc));
+
+// ---------- filtros ----------
+function fillSel(id,vals,all){const el=$(id);const cur=el.value;el.innerHTML='<option value="">'+all+'</option>'+vals.map(v=>`<option>${esc(v)}</option>`).join('');if(vals.includes(cur))el.value=cur}
+function buildFilters(){
+  const u=k=>[...new Set(OBRAS.map(o=>o[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
+  fillSel('fProv',u('pr'),'Todas');fillSel('fUn',u('un'),'Todas');fillSel('fEmp',u('em'),'Todos');fillSel('fTipo',u('t'),'Todos');
+}
+[['fProv','prov'],['fUn','un'],['fEmp','emp'],['fTipo','tipo']].forEach(([id,k])=>$(id).addEventListener('change',e=>{S.f[k]=e.target.value;render()}));
+$('fClear').onclick=()=>{S.f={prov:'',un:'',emp:'',tipo:''};['fProv','fUn','fEmp','fTipo'].forEach(i=>$(i).value='');render()};
+$('onlyYear').onchange=e=>{S.onlyYear=e.target.checked;renderGantt()};
+$('onlyChanged').onchange=e=>{S.onlyChanged=e.target.checked;renderGantt()};
+let qt;$('q').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();renderGantt()},120)});
+
+// ---------- años ----------
+function renderYears(){
+  let h='';for(let y=Y0;y<=Y1;y++)h+=`<button class="yr" type="button" aria-pressed="${y===S.year}" data-y="${y}">${y}</button>`;
+  $('years').innerHTML=h;
+}
+$('years').addEventListener('click',e=>{const b=e.target.closest('[data-y]');if(b){S.year=+b.dataset.y;S.selMonth=null;render()}});
+
+// ---------- KPIs ----------
+function renderKPIs(list,refS,simS){
+  const y=S.year,b=yearSum(refS,y),s=yearSum(simS,y),d=s-b,obj=S.obj[y];
+  const moved=list.filter(isChanged).length;
+  let tot=0,totB=0;for(let yy=Y0;yy<=Y1;yy++){tot+=yearSum(simS,yy);totB+=yearSum(refS,yy)}
+  const pill=d>0.5?`<span class="pill up">▲ ${fmtBig(d)} vs ${S.ref?'referencia':'base'}</span>`:d<-0.5?`<span class="pill down">▼ ${fmtBig(-d)} vs ${S.ref?'referencia':'base'}</span>`:`<span class="pill eq">Igual a ${S.ref?'la referencia':'la base'}</span>`;
+  let objHtml='<div class="v" style="color:var(--muted)">—</div><div class="s">Sin objetivo cargado para '+y+'</div>';
+  if(obj){const pct=s/obj*100;const st=pct>100?'<span class="pill over">Excede en '+fmtBig(s-obj)+'</span>':'<span class="pill under">Margen '+fmtBig(obj-s)+'</span>';
+    objHtml=`<div class="v num">${nf(pct,1)}%</div><div class="s">de ${fmtBig(obj)} · ${st}</div>`}
+  $('kpis').innerHTML=`
+   <div class="kpi"><span class="lbl"><i class="sw" style="background:var(--base);opacity:.5"></i>${S.ref?'Referencia':'Base'} ${y}</span><div class="v num">${fmtBig(b)}</div><div class="s">${esc(refName())}</div></div>
+   <div class="kpi hl"><span class="lbl"><i class="sw" style="background:var(--sim)"></i>Simulación ${y}</span><div class="v num">${fmtBig(s)}</div><div class="s">${pill}</div></div>
+   <div class="kpi"><span class="lbl"><i class="sw" style="background:var(--obj)"></i>vs. objetivo ${y}</span>${objHtml}</div>
+   <div class="kpi"><span class="lbl">Total ${Y0}–${Y1}</span><div class="v num">${fmtBig(tot)}</div><div class="s">${Math.abs(tot-totB)>1?'Difiere en '+fmtBig(tot-totB):'Mismo total: la inversión solo se redistribuye en el tiempo'}</div></div>
+   <div class="kpi"><span class="lbl">Obras movidas</span><div class="v num">${moved}</div><div class="s">de ${list.length} obras filtradas</div></div>`;
+  document.querySelectorAll('.refName').forEach(e=>e.textContent=refName());
+}
+
+// ---------- cambios del escenario ----------
+function renderChanges(list){
+  const rc=refCh();const rows=list.filter(o=>differs(o,rc));
+  $('chgPanel').hidden=!rows.length;if(!rows.length)return;
+  const yrs=[];for(let y=Y0;y<=Y1;y++){let d=0;rows.forEach(o=>d+=yearOf(o,S.changes,y)-yearOf(o,rc,y));if(Math.abs(d)>0.5)yrs.push({y,d})}
+  $('chgNote').textContent=rows.length+(rows.length===1?' obra distinta':' obras distintas')+' a '+refName();
+  $('chgYears').innerHTML=yrs.map(x=>`<div class="fy"><span class="lbl">${x.y}</span><b class="num">${x.d>0?'+':'−'}${fmtBig(Math.abs(x.d))}</b><span class="note">${x.d>0?'entra inversión':'sale inversión'}</span></div>`).join('')||'<span class="note">Los cambios no mueven plata entre años.</span>';
+  let h='<thead><tr><th>Obra</th><th>Inicio</th><th>Plazo</th><th>Mueve entre años</th></tr></thead><tbody>';
+  rows.sort((a,b)=>a.p.localeCompare(b.p,'es')).forEach(o=>{const a=plan(o,rc),b=plan(o,S.changes);
+    const mv=[];for(let y=Y0;y<=Y1;y++){const d=yearOf(o,S.changes,y)-yearOf(o,rc,y);if(Math.abs(d)>0.5)mv.push(`${y} ${d>0?'+':'−'}${fmtM(Math.abs(d))}`)}
+    h+=`<tr><td><b>${esc(o.o)}</b><div class="note">${esc(o.p)}</div></td><td class="num">${mLabel(a.s)} → <b>${mLabel(b.s)}</b></td><td class="num">${a.d} → <b>${b.d}</b> meses${(a.a||b.a)?`<br>anticipo ${nf((a.a||0)*100,1)}% → <b>${nf((b.a||0)*100,1)}%</b>`:''}</td><td class="num">${mv.join('<br>')||'<span class="note">Queda en el mismo año</span>'}</td></tr>`});
+  $('chgTable').innerHTML=h+'</tbody>';
+}
+
+// ---------- gráficos ----------
+function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v)));const n=v/p;return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p}
+function axisLbl(v){if(!v)return '0';if(v>=1e9)return nf(v/1e9,1)+' mil M';return nf(v/1e6,v<1e7?1:0)+' M'}
+function chartW(svg){return Math.max(300,svg.parentElement.clientWidth)}
+function renderMacro(refS,simS){
+  const svg=$('macro'),W=chartW(svg),H=200,pl=W<500?52:72,pr=8,pt=12,pb=28;
+  const ys=[];for(let y=Y0;y<=Y1;y++)ys.push({y,b:yearSum(refS,y),s:yearSum(simS,y),o:S.obj[y]||0});
+  const mx=niceMax(Math.max(1,...ys.map(d=>Math.max(d.b,d.s,d.o))));
+  const cw=(W-pl-pr)/ys.length, sc=v=>pt+(H-pt-pb)*(1-v/mx);
+  let g='';
+  for(let i=0;i<=4;i++){const v=mx*i/4,yy=sc(v);g+=`<line class="grid" x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}"/><text x="${pl-8}" y="${yy+4}" text-anchor="end">${axisLbl(v)}</text>`}
+  ys.forEach((d,i)=>{const x=pl+i*cw,bw=Math.min(14,cw*.18),cx=x+cw/2,foc=d.y===S.year;
+    g+=`<g class="macro-bar" data-y="${d.y}"><rect class="hit" x="${x+2}" y="${pt}" width="${cw-4}" height="${H-pt-pb}" fill="${foc?'var(--orange-tint)':'transparent'}" rx="6"/>
+      <rect x="${cx-bw-1}" y="${sc(d.b)}" width="${bw}" height="${Math.max(0,H-pb-sc(d.b))}" fill="var(--base)" opacity=".35" rx="2"><title>${d.y} · ${esc(refName())} ${fmtBig(d.b)}</title></rect>
+      ${S.bd?stackRects(stack(S.bd,Array.from({length:12},(_,k)=>d.y*12+k)),cx+1,bw,sc,H-pb,d.y+''):`<rect x="${cx+1}" y="${sc(d.s)}" width="${bw}" height="${Math.max(0,H-pb-sc(d.s))}" fill="var(--sim)" rx="2"><title>${d.y} · Simulación ${fmtBig(d.s)}</title></rect>`}
+      ${d.o?`<line x1="${cx-bw-4}" x2="${cx+bw+4}" y1="${sc(d.o)}" y2="${sc(d.o)}" stroke="var(--obj)" stroke-width="2" stroke-dasharray="4 3"/>`:''}
+      <text x="${cx}" y="${H-8}" text-anchor="middle" style="${foc?'fill:var(--fg);font-weight:700':''}">${cw<44?"'"+String(d.y).slice(2):d.y}</text></g>`});
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
+}
+$('macro').addEventListener('click',e=>{const g=e.target.closest('[data-y]');if(g){S.year=+g.dataset.y;S.selMonth=null;render()}});
+let lastMonthly=null;
+// ---------- desglose por categoría ----------
+S.dim='t';const MAXCAT=7;
+const DIMN={t:'Tipo de obra',p:'Emprendimiento',pp:'Proyecto de Planner',pr:'Provincia',o:'Obra'};
+const catOf=o=>{const v=S.dim==='t'?o.t:S.dim==='p'?o.em:S.dim==='pp'?o.p:S.dim==='pr'?o.pr:o.o;return v||'Sin dato'};
+// Color por categoría: las 7 primeras con la paleta de marca; el resto se genera con tonos bien separados
+function colN(i){if(i<7)return 'var(--c'+(i+1)+')';const h=Math.round((i*137.508)%360),l=[48,62,38][i%3],c=[62,48,70][Math.floor(i/3)%3];return `hsl(${h} ${c}% ${l}%)`}
+function buildBD(list){ // todas las categorías, ordenadas por inversión simulada total (sin agrupar en "Otros")
+  if(!S.dim)return null;const tot=new Map();
+  list.forEach(o=>{const k=catOf(o);tot.set(k,(tot.get(k)||0)+o.m)});
+  const order=[...tot.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const col={};order.forEach((c,i)=>col[c]=colN(i));
+  const sim=new Map();order.forEach(c=>sim.set(c,new Map()));
+  list.forEach(o=>{const p=plan(o,S.changes),d=distribuir(o,p.d,p.a),m=sim.get(catOf(o));d.forEach((v,k)=>m.set(p.s+k,(m.get(p.s+k)||0)+v))});
+  return {order,col,sim,key:catOf};
+}
+function stack(bd,months){ // [{c,v}] para un conjunto de meses
+  return bd.order.map(c=>{const m=bd.sim.get(c);let v=0;months.forEach(x=>v+=m.get(x)||0);return {c,v}}).filter(x=>x.v>0.5);
+}
+// Curva monótona entre puntos: suave, sin pasarse de los valores reales de cada mes
+function curva(p){if(p.length<2)return '';const n=p.length,dx=[],m=[],t=[];
+  for(let i=0;i<n-1;i++){dx[i]=p[i+1][0]-p[i][0];m[i]=(p[i+1][1]-p[i][1])/dx[i]}
+  t[0]=m[0];t[n-1]=m[n-2];for(let i=1;i<n-1;i++)t[i]=m[i-1]*m[i]<=0?0:(m[i-1]+m[i])/2;
+  for(let i=0;i<n-1;i++){if(m[i]===0){t[i]=0;t[i+1]=0;continue}const a=t[i]/m[i],b=t[i+1]/m[i],h=a*a+b*b;if(h>9){const k=3/Math.sqrt(h);t[i]=k*a*m[i];t[i+1]=k*b*m[i]}}
+  let d='M'+p[0][0]+' '+p[0][1];for(let i=0;i<n-1;i++){const h=dx[i]/3;d+=' C'+(p[i][0]+h)+' '+(p[i][1]+t[i]*h)+' '+(p[i+1][0]-h)+' '+(p[i+1][1]-t[i+1]*h)+' '+p[i+1][0]+' '+p[i+1][1]}return d}
+function stackRects(parts,x,w,sc,y0,lbl){let acc=0,h='';const zero=sc(0);
+  parts.forEach(p=>{const top=sc(acc+p.v),bot=sc(acc);h+=`<rect x="${x}" y="${top}" width="${w}" height="${Math.max(0,bot-top-(bot-top>3?1:0))}" fill="${S.bd.col[p.c]}"><title>${esc(lbl)} · ${esc(p.c)}: ${fmtM(p.v)}</title></rect>`;acc+=p.v});return h}
+// Leyenda: solo lo que tiene inversión en el año foco, de mayor a menor, con su monto. Las primeras 20 a la vista.
+S.legAll=false;
+function renderLegend(){const el=$('bdLegend');if(!S.bd){el.innerHTML='';return}
+  const ms=Array.from({length:12},(_,k)=>S.year*12+k);const it=stack(S.bd,ms).sort((a,b)=>b.v-a.v);
+  if(!it.length){el.innerHTML='<span class="note">Sin inversión en '+S.year+'.</span>';return}
+  const MAX=20,vis=S.legAll?it:it.slice(0,MAX);
+  el.innerHTML=vis.map(x=>`<span><i style="background:${S.bd.col[x.c]}"></i>${esc(x.c)} <b class="num">${fmtM(x.v)}</b></span>`).join('')+
+    (it.length>MAX?`<button type="button" class="legmore" id="legMore">${S.legAll?'Ver menos':'Ver las '+it.length+' ('+(it.length-MAX)+' más)'}</button>`:'');
+  const b=$('legMore');if(b)b.onclick=()=>{S.legAll=!S.legAll;renderLegend()}}
+function renderDetail(){const el=$('mDetail');if(S.selMonth==null||!lastMonthly){el.hidden=true;return}
+  const m=lastMonthly.ms[S.selMonth].m,rc=refCh();let list=filtered();
+  const rows=[];list.forEach(o=>{const p=plan(o,S.changes),r=plan(o,rc);const sv=(m>=p.s&&m<p.s+p.d)?distribuir(o,p.d,p.a)[m-p.s]:0,bv=(m>=r.s&&m<r.s+r.d)?distribuir(o,r.d,r.a)[m-r.s]:0;if(sv>0.5||bv>0.5)rows.push({o,sv,bv})});
+  const tot=rows.reduce((a,x)=>a+x.sv,0),totB=rows.reduce((a,x)=>a+x.bv,0);
+  const g=new Map();const kf=S.bd?catOf:(()=> 'Todas las obras');rows.forEach(x=>{const k=kf(x.o);if(!g.has(k))g.set(k,[]);g.get(k).push(x)});
+  const sumOf=c=>g.get(c).reduce((a,x)=>a+x.sv,0);const order=[...g.keys()].sort((a,b)=>sumOf(b)-sumOf(a));const colOf=c=>S.bd?(S.bd.col[c]||'var(--c8)'):'';
+  let h=`<h3>Composición de ${mLabel(m)} <span class="note">Simulación ${fmtM(tot)} · ${esc(refName())} ${fmtM(totB)} · ${rows.length} obras${S.bd?' · por '+DIMN[S.dim].toLowerCase():''}</span><span class="spacer" style="flex:1"></span><button class="x" type="button" id="mDetClose">Cerrar</button></h3>`;
+  if(!rows.length)h+='<p class="note">No hay inversión en este mes con los filtros actuales.</p>';
+  else{h+=`<table><thead><tr><th>${S.bd&&S.dim!=='o'?esc(DIMN[S.dim])+' / obra':'Obra'}</th><th class="r">Simulación</th><th class="r">% del mes</th><th class="r">${esc(refName())}</th><th class="r">Δ</th></tr></thead><tbody>`;
+    order.forEach(c=>{const it=g.get(c).sort((a,b)=>b.sv-a.sv||b.bv-a.bv);const cs=it.reduce((a,x)=>a+x.sv,0),cb=it.reduce((a,x)=>a+x.bv,0),pc=tot?cs/tot*100:0;
+      const showObras=!(S.bd&&S.dim==='o');
+      h+=`<tr class="cat"><td>${S.bd?`<i style="background:${colOf(c)}"></i>`:''}${esc(c)}${showObras?` <span class="note">(${it.length})</span>`:''}</td><td class="r">${fmtM(cs)}</td><td class="r">${nf(pc,1)}%<span class="share"><b style="width:${Math.min(100,pc)}%"></b></span></td><td class="r">${fmtM(cb)}</td><td class="r">${dlt(cs-cb)}</td></tr>`;
+      if(showObras)it.forEach(x=>{h+=`<tr><td>${esc(x.o.o)}${S.dim==='pp'?'':` <span class="note">· ${esc(S.dim==='p'&&x.o.p===x.o.em?'':x.o.p)}</span>`.replace(' <span class="note">· </span>','')}</td><td class="r">${fmtM(x.sv)}</td><td class="r">${tot?nf(x.sv/tot*100,1):0}%</td><td class="r">${fmtM(x.bv)}</td><td class="r">${dlt(x.sv-x.bv)}</td></tr>`})});
+    h+='</tbody></table>'}
+  el.innerHTML=h;el.hidden=false;
+  $('mDetClose').onclick=()=>{S.selMonth=null;$('monthly').querySelectorAll('[data-k]').forEach(x=>x.classList.remove('sel'));showMonth(null);renderDetail()};
+}
+$('selDim').addEventListener('change',e=>{S.dim=e.target.value;render()});
+function renderMonthly(refS,simS){
+  const y=S.year;$('mTitle').textContent='Flujo mensual '+y;
+  const svg=$('monthly'),W=chartW(svg),H=260,pl=W<500?48:64,pr=8,pt=16,pb=28;
+  const ms=[];for(let k=0;k<12;k++){const m=y*12+k;ms.push({m,b:refS.get(m)||0,s:simS.get(m)||0})}
+  const om=(S.obj[y]||0)/12;
+  const mx=niceMax(Math.max(1,om,...ms.map(d=>Math.max(d.b,d.s))));
+  const cw=(W-pl-pr)/12, sc=v=>pt+(H-pt-pb)*(1-v/mx);
+  let g='';
+  for(let i=0;i<=4;i++){const v=mx*i/4,yy=sc(v);g+=`<line class="grid" x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}"/><text x="${pl-8}" y="${yy+4}" text-anchor="end">${axisLbl(v)}</text>`}
+  ms.forEach((d,k)=>{const x=pl+k*cw,bw=Math.min(22,cw*.3),cx=x+cw/2;
+    g+=`<g data-k="${k}" tabindex="0" role="button" aria-label="${mLabel(d.m)}: simulación ${fmtM(d.s)}, ${esc(refName())} ${fmtM(d.b)}" class="${S.selMonth===k?'sel':''}"><rect x="${x}" y="${pt}" width="${cw}" height="${H-pt-pb}" fill="transparent" class="mhit" rx="4"/>
+     ${S.bd?stackRects(stack(S.bd,[d.m]),cx-bw/2,bw,sc,H-pb,mLabel(d.m)):`<rect x="${cx-bw/2}" y="${sc(d.s)}" width="${bw}" height="${Math.max(0,H-pb-sc(d.s))}" fill="var(--sim)" rx="2"/>`}
+     ${d.m===NOW?`<text x="${cx}" y="${pt-4}" text-anchor="middle" style="fill:var(--orange-ink);font-weight:700">hoy</text>`:''}
+     <text x="${cx}" y="${H-8}" text-anchor="middle">${W<420?MES[k][0].toUpperCase():MES[k]}</text></g>`});
+  const path=curva(ms.map((d,k)=>[pl+k*cw+cw/2,sc(d.b)]));
+  g+=`<path d="${path}" fill="none" stroke="var(--base)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`+ms.map((d,k)=>`<circle cx="${pl+k*cw+cw/2}" cy="${sc(d.b)}" r="2.5" fill="var(--surface)" stroke="var(--base)" stroke-width="1.5" pointer-events="none"/>`).join('');
+  if(om)g+=`<line x1="${pl}" x2="${W-pr}" y1="${sc(om)}" y2="${sc(om)}" stroke="var(--obj)" stroke-width="2" stroke-dasharray="6 4" pointer-events="none"/>`;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
+  lastMonthly={ms,om};
+  showMonth(S.selMonth);
+}
+function showMonth(k){
+  if(k==null||!lastMonthly){$('readout').textContent='Tocá un mes para ver todo lo que compone ese total.';return}
+  const d=lastMonthly.ms[k],df=d.s-d.b;
+  $('readout').innerHTML=`<b>${mLabel(d.m)}</b> · Simulación <b class="num">${fmtM(d.s)}</b> · ${esc(refName())} <span class="num">${fmtM(d.b)}</span> · Diferencia <span class="delta ${df>0.5?'up':df<-0.5?'down':''} num">${df>=0?'+':'−'}${fmtM(Math.abs(df))}</span>${lastMonthly.om?' · Objetivo <span class="num">'+fmtM(lastMonthly.om)+'</span>':''}`;
+}
+const mon=$('monthly');
+mon.addEventListener('mousemove',e=>{const g=e.target.closest('[data-k]');if(g)showMonth(+g.dataset.k)});
+mon.addEventListener('mouseleave',()=>showMonth(S.selMonth));
+mon.addEventListener('click',e=>{const g=e.target.closest('[data-k]');if(!g)return;S.selMonth=+g.dataset.k;mon.querySelectorAll('[data-k]').forEach(x=>x.classList.toggle('sel',+x.dataset.k===S.selMonth));showMonth(S.selMonth);renderDetail();$('mDetail').scrollIntoView({block:'nearest',behavior:'smooth'})});
+mon.addEventListener('focusin',e=>{const g=e.target.closest('[data-k]');if(g)showMonth(+g.dataset.k)});
+mon.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const g=e.target.closest('[data-k]');if(g){e.preventDefault();g.dispatchEvent(new MouseEvent('click',{bubbles:true}))}}});
+
+// ---------- Gantt ----------
+function renderGantt(){
+  const y=S.year,Ys=y*12,Ye=Ys+11,rc=refCh();
+  let list=filtered();
+  if(S.q)list=list.filter(o=>(o.o+' '+o.p).toLowerCase().includes(S.q));
+  if(S.onlyYear)list=list.filter(o=>{const p=plan(o,S.changes),r=plan(o,rc);return (p.s<=Ye&&p.s+p.d-1>=Ys)||(r.s<=Ye&&r.s+r.d-1>=Ys)});
+  if(S.onlyChanged)list=list.filter(o=>isChanged(o)||differs(o,rc));
+  list.sort((a,b)=>a.em.localeCompare(b.em,'es')||a.p.localeCompare(b.p,'es')||a.s0-b.s0);
+  $('gCount').textContent=list.length+(list.length===1?' obra':' obras');
+  const mh=MES.map((m,k)=>`<span class="${Ys+k===NOW?'now':''}">${m}</span>`).join('');
+  let h=`<thead><tr><th style="width:300px">Obra</th><th style="width:150px">Inicio</th><th style="width:130px">Plazo</th><th><div class="mhead">${mh}</div></th><th style="width:120px;text-align:right">${y} sim.</th><th style="width:120px;text-align:right">Δ vs ${S.ref?'ref.':'base'}</th></tr></thead><tbody>`;
+  if(!list.length)h+=`<tr><td colspan="6" class="note" style="padding:24px">No hay obras con estos filtros${S.onlyYear?' en '+y:''}. Probá limpiar filtros o la búsqueda, o desmarcar “Solo obras del año foco”.</td></tr>`;
+  let cur=null, totM=new Array(12).fill(0), totS=0, totD=0;
+  list.forEach(o=>{
+    if(o.em!==cur){cur=o.em;const grp=list.filter(x=>x.em===cur);let gs=0,gb=0;grp.forEach(x=>{gs+=yearOf(x,S.changes,y);gb+=yearOf(x,rc,y)});
+      h+=`<tr class="grp"><td colspan="4">${esc(cur)}</td><td class="num" style="text-align:right">${fmtM(gs)}</td><td class="num" style="text-align:right">${dlt(gs-gb)}</td></tr>`}
+    const p=plan(o,S.changes),r=plan(o,rc),c=S.changes[o.id]||{},sh=o.lock?0:(c.s||0),dd=o.lock?0:(c.d||0);
+    const dist=distribuir(o,p.d,p.a); const yb=yearOf(o,rc,y), ys=yearOf(o,S.changes,y);
+    totS+=ys;totD+=ys-yb;for(let k=0;k<p.d;k++){const m=p.s+k;if(m>=Ys&&m<=Ye)totM[m-Ys]+=dist[k]}
+    const vencido=!o.lock&&o.s0<NOW;
+    const tags=[o.lock?`<span class="pill lock">Bloqueada · en curso ${nf(o.pct*100,0)}%</span>`:'',vencido?'<span class="pill warn">Inicio vencido, sin avance</span>':'',!o.m?'<span class="pill warn">Sin presupuesto</span>':'',isChanged(o)?'<span class="pill mod">Movida</span>':''].join('');
+    const dis=o.lock?'disabled':'';
+    h+=`<tr class="${isChanged(o)?'changed':''}" data-id="${esc(o.id)}">
+      <td><div class="oname">${esc(o.o)}</div><div class="ometa">${o.p!==o.em?`<span>${esc(o.p)}</span>`:''}<span>${esc(o.t)}</span><span>${esc(o.pr)}</span><span class="num">${fmtM(o.m)}</span>${o.link?`<a href="${esc(o.link)}" target="_blank" rel="noopener">Planner ↗</a>`:''}</div><div class="ometa">${tags}</div></td>
+      <td><div class="ctl"><button class="b" type="button" data-a="s-" ${dis||(sh<=minShift(o)?'disabled':'')} aria-label="Adelantar un mes">−</button>
+        <input type="number" step="1" data-a="s" value="${sh}" ${dis} aria-label="Desplazamiento en meses de ${esc(o.o)}">
+        <button class="b" type="button" data-a="s+" ${dis} aria-label="Atrasar un mes">+</button></div>
+        <div class="ctl-sub">Inicia <b>${mLabel(p.s)}</b>${sh?` · base ${mLabel(o.s0)}`:''}</div></td>
+      <td><div class="ctl"><button class="b" type="button" data-a="d-" ${dis||(p.d<=1?'disabled':'')} aria-label="Acortar plazo">−</button>
+        <input type="number" min="1" step="1" data-a="d" value="${p.d}" ${dis} aria-label="Plazo en meses de ${esc(o.o)}">
+        <button class="b" type="button" data-a="d+" ${dis} aria-label="Alargar plazo">+</button></div>
+        <div class="ctl-sub">${p.d===1?'1 mes':p.d+' meses'}${dd?` · base ${o.d0}`:''} · fin <b>${mLabel(p.s+p.d-1)}</b></div>
+        ${esEdificio(o)?`<div class="ctl ant"><span class="ctl-sub">Anticipo</span><input type="number" min="0" max="100" step="1" data-a="a" value="${nf(p.a*100,1).replace(',','.')}" ${dis} aria-label="Anticipo en % de ${esc(o.o)}"><span class="ctl-sub">%</span></div>`:''}</td>
+      <td>${tlCell(o,p,r,Ys,Ye,dist)}</td>
+      <td class="num" style="text-align:right;font-weight:600">${fmtM(ys)}</td>
+      <td class="num" style="text-align:right">${dlt(ys-yb)}${isChanged(o)?`<br><button class="reset" type="button" data-a="r">Restablecer</button>`:''}</td></tr>`;
+  });
+  if(list.length)h+=`<tr class="foot"><td colspan="3">Total ${list.length} obras · por mes</td><td><div class="mrow num">${totM.map(v=>`<span title="${fmt$(v)}">${v?nf(Math.round(v/1e6),0):'–'}</span>`).join('')}</div><div class="ctl-sub" style="text-align:center">millones de $</div></td><td class="num" style="text-align:right">${fmtM(totS)}</td><td class="num" style="text-align:right">${dlt(totD)}</td></tr>`;
+  $('gt').innerHTML=h+'</tbody>';
+}
+function dlt(v){if(Math.abs(v)<0.5)return '<span class="note">—</span>';return `<span class="delta ${v>0?'up':'down'}">${v>0?'+':'−'}${fmtM(Math.abs(v))}</span>`}
+function tlCell(o,p,r,Ys,Ye,dist){
+  const pos=(s,d)=>{const a=Math.max(s,Ys),b=Math.min(s+d-1,Ye);if(a>b)return null;return {l:(a-Ys)/12*100,w:(b-a+1)/12*100,cl:s<Ys,cr:s+d-1>Ye}};
+  const pb=pos(r.s,r.d),ps=pos(p.s,p.d);let h='<div class="tl">'+'<span class="m"></span>'.repeat(12);
+  if(pb)h+=`<span class="bar-base" style="left:${pb.l}%;width:${pb.w}%" title="${esc(refName())}: ${mLabel(r.s)} → ${mLabel(r.s+r.d-1)}"></span>`;
+  if(ps){const cv=esEdificio(o),per=cv?o.m/p.d:(dist[0]||0);h+=`<span class="bar-sim ${o.lock?'lock':''} ${!o.m?'zero':''}" style="left:${ps.l}%;width:${ps.w}%" title="${mLabel(p.s)} → ${mLabel(p.s+p.d-1)} · ${cv?'curva de inversión'+(p.a?', anticipo '+nf(p.a*100,1)+'% en el inicio':'')+' · promedio ':''}${fmtM(per)} por mes">${ps.w>=16?(cv?'curva · ':'')+fmtM(per)+'/mes':''}</span>`;
+    if(ps.cl)h+=`<span class="cont l" title="Viene de ${Math.floor(p.s/12)}">◂</span>`;if(ps.cr)h+=`<span class="cont r" title="Sigue en ${Math.floor((p.s+p.d-1)/12)}">▸</span>`}
+  else{const after=p.s>Ye;h+=`<span class="cont ${after?'r':'l'}" style="top:17px">${after?'Pasa a '+Math.floor(p.s/12)+' ▸':'◂ Queda en '+Math.floor((p.s+p.d-1)/12)}</span>`}
+  return h+'</div>';
+}
+function pushHist(){S.hist.push(JSON.stringify(S.changes));if(S.hist.length>100)S.hist.shift()}
+function setChange(o,s,d,a){
+  if(o.lock)return;
+  const prev=S.changes[o.id]||{s:0,d:0};if(a===undefined)a=prev.a||0;
+  const c=clampChange(o,s,d,a);
+  if((prev.s||0)===c.s&&(prev.d||0)===c.d&&(prev.a||0)===(c.a||0)){render();return}
+  pushHist();
+  if(!c.s&&!c.d&&!c.a)delete S.changes[o.id];else S.changes[o.id]=c;
+  S.dirty=true;render();
+}
+$('gt').addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b)return;const tr=b.closest('tr[data-id]');const o=OBRAS.find(x=>x.id===tr.dataset.id);const c=S.changes[o.id]||{s:0,d:0};
+  const a=b.dataset.a;if(a==='s-')setChange(o,(c.s||0)-1,c.d);else if(a==='s+')setChange(o,(c.s||0)+1,c.d);else if(a==='d-')setChange(o,c.s,(c.d||0)-1);else if(a==='d+')setChange(o,c.s,(c.d||0)+1);else if(a==='r')setChange(o,0,0,0)});
+$('gt').addEventListener('change',e=>{const i=e.target.closest('input[data-a]');if(!i)return;const o=OBRAS.find(x=>x.id===i.closest('tr').dataset.id);const c=S.changes[o.id]||{s:0,d:0};
+  const v=parseInt(String(i.value).replace('+',''),10);if(isNaN(v)){render();return}
+  if(i.dataset.a==='a'){const pc=parseFloat(String(i.value).replace(',','.'));if(isNaN(pc)||pc<0||pc>100){render();return}setChange(o,c.s,c.d,pc/100);return}
+  if(i.dataset.a==='s')setChange(o,v,c.d);else setChange(o,c.s,v-o.d0)});
+function undo(){if(!S.hist.length)return;S.changes=JSON.parse(S.hist.pop());S.dirty=true;render();toast('Cambio deshecho')}
+$('btnUndo').onclick=undo;
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();undo()}});
+
+// ---------- escenarios ----------
+const hasChanges=()=>Object.keys(S.changes).length>0;
+let pending=null;
+function guard(fn){if(S.dirty&&hasChanges()){pending=fn;$('discardForm').hidden=false;renderEsc();return}fn()}
+$('discardOk').onclick=()=>{$('discardForm').hidden=true;const f=pending;pending=null;S.dirty=false;f&&f()};
+$('discardCancel').onclick=()=>{$('discardForm').hidden=true;pending=null;renderEsc()};
+function loadEsc(id){
+  if(!id){S.esc=null;S.changes={};S.hist=[];S.dirty=false;render();return}
+  const sc=S.escList.find(x=>x.id===id);if(!sc)return;
+  S.esc=id;S.changes=JSON.parse(JSON.stringify(sc.cambios||{}));S.hist=[];S.dirty=false;if(S.ref===id)S.ref=null;render();toast('Escenario “'+sc.nombre+'” cargado');
+}
+function renderEsc(){
+  const sel=$('selEsc');const opts=['<option value="">Base · fechas de Planner</option>'];
+  if(!S.esc&&S.dirty&&hasChanges())opts.push('<option value="__draft">Simulación sin guardar</option>');
+  S.escList.forEach(e=>opts.push(`<option value="${esc(e.id)}">${esc(e.nombre)}${S.esc===e.id&&S.dirty?' (con cambios)':''}</option>`));
+  sel.innerHTML=opts.join('');sel.value=S.esc||(S.dirty&&hasChanges()?'__draft':'');
+  const rs=$('selRef');rs.innerHTML='<option value="">Base · fechas de Planner</option>'+S.escList.filter(e=>e.id!==S.esc).map(e=>`<option value="${esc(e.id)}">${esc(e.nombre)}</option>`).join('');
+  rs.value=S.ref||'';rs.disabled=!S.escList.filter(e=>e.id!==S.esc).length;
+  $('btnUndo').disabled=!S.hist.length;
+  $('btnSave').hidden=!S.canWrite;$('btnSave').disabled=!hasChanges();
+  $('btnSaveOver').hidden=!(S.canWrite&&S.esc&&S.dirty);
+  $('btnDel').hidden=!(S.canWrite&&S.esc);
+  $('btnAdm').hidden=!S.escList.length;$('btnAdm').textContent='Escenarios guardados ('+S.escList.length+')';renderAdm();
+  $('btnReset').disabled=!hasChanges()&&!S.esc;
+  const role=$('role');role.textContent=S.canWrite?'Editor':'Visualizador';role.classList.toggle('ed',S.canWrite);
+  $('importLbl').hidden=!S.canWrite;
+  $('objIn').disabled=!S.canWrite;$('objSave').hidden=!S.canWrite;
+  // metadatos del escenario
+  const m=$('escMeta');const sc=S.escList.find(x=>x.id===S.esc);
+  if(!sc){m.textContent=S.canWrite?'':'Modo visualizador: podés simular libremente; guardar está reservado a los editores.';return}
+  const n=Object.keys(sc.cambios||{}).length,miss=Object.keys(sc.cambios||{}).filter(id=>!(S.raw||OBRAS).find(o=>o.id===id)).length;
+  const who=sc.autor&&S.names[sc.autor]?S.names[sc.autor]:'';
+  const when=sc.actualizado?new Date(sc.actualizado).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+  m.innerHTML=`${n} ${n===1?'obra movida':'obras movidas'}${who?' · por '+esc(who):''}${when?' · actualizado '+when:''}${miss?` · <span class="warnx">${miss} ${miss===1?'obra ya no está':'obras ya no están'} en la base cargada y no se aplican</span>`:''}`;
+}
+async function resolveNames(){if(!S.user)return;const ids=[...new Set(S.escList.map(e=>e.autor).filter(Boolean))];if(!ids.length)return;
+  try{const ps=await S.user.profiles(ids);ids.forEach(id=>{if(ps[id]&&ps[id].name)S.names[id]=ps[id].name});renderEsc()}catch(e){}}
+$('selEsc').addEventListener('change',e=>{const v=e.target.value;if(v==='__draft'){renderEsc();return}guard(()=>loadEsc(v))});
+$('selRef').addEventListener('change',e=>{S.ref=e.target.value||null;render()});
+$('btnReset').onclick=()=>guard(()=>loadEsc(''));
+$('btnSave').onclick=()=>{$('saveForm').hidden=false;$('saveErr').hidden=true;$('escName').value='';$('escName').focus()};
+$('saveCancel').onclick=()=>$('saveForm').hidden=true;
+$('escName').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveOk').click()});
+$('saveOk').onclick=async()=>{const n=$('escName').value.trim();const err=$('saveErr');
+  if(!n){err.textContent='Escribí un nombre para el escenario.';err.hidden=false;$('escName').focus();return}
+  if(S.escList.some(e=>(e.nombre||'').trim().toLowerCase()===n.toLowerCase())){err.textContent='Ya existe un escenario con ese nombre. Elegí otro, o abrilo y usá “Guardar cambios”.';err.hidden=false;return}
+  if(!S.db){err.textContent='El guardado no está disponible en esta vista.';err.hidden=false;return}
+  try{const ref=S.db.collection('escenarios').doc();const now=new Date().toISOString();await ref.set({nombre:n,cambios:S.changes,autor:S.uid||null,creado:now,actualizado:now});
+    S.esc=ref.id;S.dirty=false;$('saveForm').hidden=true;toast('Escenario “'+n+'” guardado');render()}catch(e){writeFail(e)}};
+$('btnSaveOver').onclick=async()=>{if(!S.db||!S.esc)return;try{await S.db.doc('escenarios/'+S.esc).update({cambios:S.changes,actualizado:new Date().toISOString(),autor:S.uid||null});S.dirty=false;toast('Cambios guardados');render()}catch(e){writeFail(e)}};
+let delId=null;
+function askDel(id){const sc=S.escList.find(x=>x.id===id);if(!sc)return;delId=id;$('delName').textContent=sc.nombre;$('delForm').hidden=false;$('delForm').scrollIntoView({block:'nearest'})}
+$('btnDel').onclick=()=>askDel(S.esc);
+function renderAdm(){const box=$('admBox');if(box.hidden)return;const L=S.escList;
+  $('admNote').textContent=L.length?L.length+(L.length===1?' escenario':' escenarios'):'';
+  $('admTable').innerHTML=L.length?'<thead><tr><th>Nombre</th><th>Obras movidas</th><th>Actualizado</th><th></th></tr></thead><tbody>'+L.map(e=>{const n=Object.keys(e.cambios||{}).length,who=e.autor&&S.names[e.autor]?S.names[e.autor]:(e.autor||''),when=e.actualizado?new Date(e.actualizado).toLocaleDateString('es-AR'):'';
+    return `<tr><td><b>${esc(e.nombre)}</b>${S.esc===e.id?' <span class="pill mod">abierto</span>':''}</td><td class="num">${n}</td><td>${when}${who?' · '+esc(who):''}</td><td style="text-align:right;white-space:nowrap"><button class="btn ghost" type="button" data-open="${esc(e.id)}">Abrir</button> ${S.canWrite?`<button class="btn danger" type="button" data-del="${esc(e.id)}">Borrar</button>`:''}</td></tr>`}).join('')+'</tbody>':'<tbody><tr><td class="note">No hay escenarios guardados.</td></tr></tbody>'}
+$('btnAdm').onclick=()=>{$('admBox').hidden=false;renderAdm()};
+$('admClose').onclick=()=>{$('admBox').hidden=true};
+$('admTable').addEventListener('click',e=>{const o=e.target.closest('[data-open]'),d=e.target.closest('[data-del]');if(o){const id=o.dataset.open;guard(()=>loadEsc(id))}else if(d)askDel(d.dataset.del)});
+$('delCancel').onclick=()=>{$('delForm').hidden=true;delId=null};
+$('delOk').onclick=async()=>{const id=delId||S.esc;if(!id)return;const nom=(S.escList.find(x=>x.id===id)||{}).nombre||'';
+  try{await S.db.doc('escenarios/'+id).delete();$('delForm').hidden=true;delId=null;S.escList=S.escList.filter(x=>x.id!==id);
+    if(S.esc===id){S.esc=null;S.changes={};S.hist=[];S.dirty=false}if(S.ref===id)S.ref=null;toast('Escenario “'+nom+'” borrado');render()}
+  catch(e){$('delForm').hidden=true;toast('No se pudo borrar'+(e&&e.message?': '+e.message:''))}};
+function writeFail(e){if(e&&e.code==='invalid_argument'){S.canWrite=false;render();toast('Tu perfil es de solo lectura: podés simular, pero no guardar.')}else if(e&&e.code==='quota_exceeded')toast('Se llegó al límite de almacenamiento. Borrá escenarios viejos.');else toast('No se pudo guardar'+(e&&e.message?': '+e.message:'. Probá de nuevo en unos segundos.'))}
+
+// ---------- objetivo ----------
+function renderObj(){const y=S.year;$('objLbl').textContent='Presupuesto objetivo anual '+y;const v=S.obj[y];
+  if(document.activeElement!==$('objIn'))$('objIn').value=v?Math.round(v).toLocaleString('es-AR'):'';
+  $('objNote').textContent=v?'Equivale a '+fmtBig(v)+' en el año, '+fmtM(v/12)+' por mes.':(S.canWrite?(PAIS==='PY'?'Cargalo en dólares.':'Cargalo en pesos (CAC '+CAC_BASE+').')+' Se reparte en 12 meses iguales.':'Todavía no hay objetivo cargado para '+y+'.');}
+$('objSave').onclick=async()=>{const raw=$('objIn').value.replace(/[^\d]/g,'');const v=raw?+raw:0;const y=S.year;
+  if(!S.db){toast('Guardado no disponible en esta vista');return}
+  const next=Object.assign({},S.obj);if(v)next[y]=v;else delete next[y];
+  const doc=Object.assign({},S.objDoc||{},{actualizado:new Date().toISOString()});doc[PAIS==='PY'?'aniosPY':'anios']=next;
+  try{await S.db.doc('config/objetivos').set(doc);S.objDoc=doc;S.obj=next;toast(v?'Objetivo '+y+' guardado':'Objetivo '+y+' borrado');render()}catch(e){writeFail(e)}};
+
+// ---------- importar Excel ----------
+$('fileIn').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(!window.XLSX){toast('No se pudo cargar el lector de Excel. Recargá la página.');return}
+  try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+    const hi=rows.findIndex(r=>r&&r.includes('Proyecto')&&r.includes('Obra'));if(hi<0)throw new Error('No encontré la fila de títulos con “Proyecto” y “Obra”.');
+    const H=rows[hi];const col=n=>H.findIndex(x=>x&&String(x).trim().toLowerCase()===n.toLowerCase());
+    const c={id:col('Id'),p:col('Proyecto'),o:col('Obra'),ini:col('Fecha de inicio'),fin:col('Fecha de Fin'),m:col('Presupuesto Act'),mu:col('Presupuesto (U$D)'),t:col('Área'),pr:col('Provincia'),un:col('Unidad de Negocio'),pct:col('%'),est:col('Estado Obra'),com:col('Comentarios Costos'),link:col('Link')};
+    const req={id:'Id',p:'Proyecto',o:'Obra',ini:'Fecha de inicio',fin:'Fecha de Fin',m:'Presupuesto Act'};
+    const miss=Object.keys(req).filter(k=>c[k]<0).map(k=>req[k]);if(miss.length)throw new Error('Faltan columnas: '+miss.join(', ')+'.');
+    const d2s=v=>{if(v instanceof Date&&!isNaN(v))return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return d?d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0'):null}const m=String(v||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):null};
+    const g=(r,k)=>c[k]>=0?r[c[k]]:null;const out=[],seen=new Set(),bad=[],dups=[];let pctFix=0,noBudget=0;
+    rows.slice(hi+1).forEach(r=>{if(!r||!r.some(x=>x!=null&&x!==''))return;const name=String(g(r,'o')||g(r,'p')||'(sin nombre)');
+      if(!g(r,'id')||!g(r,'p')){bad.push(name+' (sin Id o Proyecto)');return}
+      const id=String(g(r,'id')).trim();if(seen.has(id)){dups.push(name);return}
+      const ini=d2s(g(r,'ini')),fin=d2s(g(r,'fin'));if(!ini||!fin){bad.push(name+' (sin fechas)');return}
+      if(mi(fin)<mi(ini)){bad.push(name+' (fin anterior al inicio)');return}
+      let pct=+g(r,'pct')||0;if(pct>1){pct=pct/100;pctFix++}
+      const m=+g(r,'m')||0,mu=+g(r,'mu')||0,py=normE(g(r,'pr'))==='paraguay';if(py?!mu:!m)noBudget++;
+      seen.add(id);
+      out.push({id,p:String(g(r,'p')),o:String(g(r,'o')||''),t:String(g(r,'t')||'').replace(/^Obras\s+/,''),pr:String(g(r,'pr')||''),un:String(g(r,'un')||'Natania'),ini,fin,m,mu,pct,est:String(g(r,'est')||''),com:String(g(r,'com')||''),link:String(g(r,'link')||'')})});
+    if(!out.length)throw new Error('No encontré filas de obras válidas.');
+    S.pendingImport={out,file:f.name};
+    $('importTxt').innerHTML=`Vas a reemplazar la base actual (<b>${OBRAS.length} obras</b>) por <b>${out.length} obras</b> de <b>${esc(f.name)}</b>. Los escenarios guardados se mantienen.`;
+    const li=[];if(bad.length)li.push(`${bad.length} ${bad.length===1?'fila descartada':'filas descartadas'}: ${esc(bad.slice(0,4).join('; '))}${bad.length>4?'…':''}`);
+    if(dups.length)li.push(`${dups.length} Id repetidos: se usa la primera fila de cada uno`);
+    if(pctFix)li.push(`${pctFix} avances venían como número entero (ej. 2) y se tomaron como porcentaje (2%)`);
+    if(noBudget)li.push(`${noBudget} obras sin presupuesto: se muestran en 0`);
+    {const py=out.filter(o=>normE(o.pr)==='paraguay');if(py.length)li.push(`${py.length} obras de Paraguay: van a la solapa Natania Paraguay, en dólares (columna “Presupuesto (U$D)”)${py.some(o=>!o.mu)?' · '+py.filter(o=>!o.mu).length+' sin monto en USD':''}`)}
+    if(c.un<0)li.push('No hay columna “Unidad de Negocio”: se asigna Natania a todas');
+    $('importList').innerHTML=li.map(x=>`<li>${x}</li>`).join('')||'<li>Sin observaciones.</li>';
+    $('importBox').hidden=false;
+  }catch(err){toast('No se pudo leer el Excel: '+(err.message||err))}});
+$('importCancel').onclick=()=>{S.pendingImport=null;$('importBox').hidden=true};
+$('importOk').onclick=async()=>{const pi=S.pendingImport;if(!pi)return;
+  try{const info={archivo:pi.file,cargado:new Date().toISOString()};
+    if(S.db)await S.db.doc('base/obras').set({obras:pi.out,archivo:pi.file,cargado:info.cargado,por:S.uid||null});
+    setBase(pi.out,info);S.pendingImport=null;$('importBox').hidden=true;toast(pi.out.length+' obras cargadas desde '+pi.file)}catch(e){writeFail(e)}};
+// ---------- emprendimientos (listado oficial) ----------
+S.emp={lista:[],alias:{}};
+const normE=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const codeE=s=>{const n=normE(s),m=n.match(/^(n\d+)/);return m?m[1]:n.split(' ')[0]};
+const STOPE=new Set('obra obras etapa infra de la el los las b sector y i ii iii iv v vcc sur subdivision'.split(' '));
+const toksE=s=>new Set(normE(s).split(' ').filter(t=>t&&!STOPE.has(t)&&!/^n\d+$/.test(t)));
+function autoEmp(p){const L=S.emp.lista.map(x=>x.nombre);if(!L.length)return null;const n=normE(p);
+  const ex=L.find(l=>normE(l)===n);if(ex)return {em:ex,how:'exacto'};
+  const c=L.filter(l=>codeE(l)===codeE(p));const tp=toksE(p);
+  const sc=c.map(l=>{let k=0;toksE(l).forEach(t=>{if(tp.has(t))k++});return {l,k}}).sort((a,b)=>b.k-a.k);
+  // si el proyecto tiene un número (altura, lote) que no está en el emprendimiento, se marca para revisar
+  const numOk=l=>{const nl=toksE(l);return [...tp].filter(t=>/\d/.test(t)).every(t=>nl.has(t))};
+  const pick=l=>numOk(l)?{em:l,how:'parecido'}:{em:p,how:'nombre de Planner',par:l};
+  if(sc.length===1)return sc[0].k?pick(sc[0].l):{em:sc[0].l,how:'revisar'};
+  if(sc.length>1&&sc[0].k>0&&sc[0].k>sc[1].k)return pick(sc[0].l);
+  return null}
+function empOf(p){const al=S.emp.alias[p];if(al)return al==='__planner'?p:al;const a=autoEmp(p);return a?a.em:p}
+function applyEmp(){OBRAS.forEach(o=>o.em=empOf(o.p))}
+// País de cada obra: Paraguay por provincia o por el país del listado de emprendimientos. Paraguay usa el monto en USD.
+const esPY=o=>{if(normE(o.pr)==='paraguay')return true;const e=S.emp.lista.find(x=>x.nombre===empOf(o.p));return !!(e&&normE(e.pais)==='paraguay')};
+function rebuild(){const raw=S.raw||[];const py=raw.filter(esPY),ar=raw.filter(o=>!esPY(o));S.cnt={AR:ar.length,PY:py.length};
+  OBRAS=prep(PAIS==='PY'?py.map(o=>Object.assign({},o,{m:+o.mu||0})):ar);applyEmp()}
+function pickYear(){const cur=Math.floor(NOW/12),c={};OBRAS.forEach(o=>{for(let k=0;k<o.d0;k++){const y=Math.floor((o.s0+k)/12);c[y]=(c[y]||0)+o.m/o.d0}});const fut=Object.keys(c).map(Number).filter(y=>y>=cur&&c[y]>0).sort((x,z)=>x-z);S.year=Math.max(Y0,fut.length?fut[0]:cur)}
+function paisUI(){$('tabAR').setAttribute('aria-selected',PAIS==='AR');$('tabPY').setAttribute('aria-selected',PAIS==='PY');
+  $('tabAR').textContent='Natania Argentina'+(S.cnt?` (${S.cnt.AR})`:'');$('tabPY').textContent='Natania Paraguay'+(S.cnt?` (${S.cnt.PY})`:'');
+  $('subtit').innerHTML=PAIS==='PY'?'Obras de Natania Paraguay en <b>dólares (USD)</b>, según la columna “Presupuesto (U$D)” de Planner. Mové obras en el tiempo y compará contra la base de Planner.'
+    :`Obras de Natania Argentina en <b>pesos constantes</b>: todos los montos están llevados a la <b>actualización CAC ${CAC_BASE}</b><span class="cac">CAC ${CAC_BASE}</span>. Mové obras en el tiempo y compará contra la base de Planner.`;
+  $('pie').textContent=PAIS==='PY'?'Montos en dólares (USD), sin actualización por índice · Reparto: Edificios con curva de inversión (base 24 meses, recalculada al plazo, anticipo en el mes de inicio); el resto en partes iguales por mes · Fuente: Planner Premium (Costos Obras).'
+    :`Montos en pesos constantes a la actualización CAC ${CAC_BASE}: cada presupuesto se lleva a ese mes con el factor CAC. En próximas actualizaciones del índice se vuelve a llevar todo al nuevo mes base · Reparto: Edificios con curva de inversión (base 24 meses, recalculada al plazo, anticipo en el mes de inicio); el resto en partes iguales por mes · Fuente: Planner Premium (Costos Obras).`;
+  $('objIn').placeholder=PAIS==='PY'?'Ej.: 15.000.000':'Ej.: 8.000.000.000';
+  S.obj=(S.objDoc&&(PAIS==='PY'?S.objDoc.aniosPY:S.objDoc.anios))||{}}
+function setPais(p){if(p===PAIS)return;PAIS=p;try{localStorage.setItem('sim-pais',p)}catch(e){}
+  S.f={prov:'',un:'',emp:'',tipo:''};['fProv','fUn','fEmp','fTipo'].forEach(i=>$(i).value='');S.selMonth=null;S.q='';$('q').value='';
+  rebuild();pickYear();setBase(S.raw||[],S.baseInfo,true)}
+$('tabAR').onclick=()=>setPais('AR');$('tabPY').onclick=()=>setPais('PY');
+document.querySelector('.paises').addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const n=PAIS==='AR'?'PY':'AR';setPais(n);$('tab'+n).focus()}});
+function setBase(list,info,soloPais){if(!soloPais){S.raw=list;S.baseInfo=info;rebuild()}S.loaded=true;paisUI();
+  if(info&&!S.yearSet){S.yearSet=true;const cur=Math.floor(NOW/12),c={};OBRAS.forEach(o=>{for(let k=0;k<o.d0;k++){const y=Math.floor((o.s0+k)/12);c[y]=(c[y]||0)+o.m/o.d0}});const fut=Object.keys(c).map(Number).filter(y=>y>=cur&&c[y]>0).sort((x,z)=>x-z);S.year=Math.max(Y0,fut.length?fut[0]:cur)}
+  $('sampleBanner').querySelector('b').textContent=info?'Datos cargados':'Sin obras cargadas';
+  $('dataSrc').textContent=info?`${OBRAS.length} obras de ${PAIS==='PY'?'Paraguay':'Argentina'} · ${info.archivo||'Excel'} · cargado ${new Date(info.cargado).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})} · ${PAIS==='PY'?'montos en USD':'actualización CAC '+CAC_BASE}.${PAIS==='PY'&&OBRAS.some(o=>!o.m)?' Hay obras sin monto en USD: volvé a cargar el Excel de Planner para traer esa columna.':''}`:(S.canWrite?'Todavía no hay una base de obras. Cargá el Excel exportado de Planner (Costos Obras) para empezar.':'Todavía no hay una base de obras. Un editor tiene que cargar el Excel de Planner.');
+  buildFilters();render()}
+
+$('empIn').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(!window.XLSX){toast('No se pudo cargar el lector de Excel. Recargá la página.');return}
+  try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:null});
+    const hi=rows.findIndex(r=>r&&r.some(x=>normE(x)==='emprendimiento'));if(hi<0)throw new Error('No encontré la columna “EMPRENDIMIENTO”.');
+    const H=rows[hi].map(normE),ce=H.indexOf('emprendimiento'),cp=H.indexOf('provincia'),cpa=H.findIndex(x=>x==='pais');
+    const lista=[];const seen=new Set();rows.slice(hi+1).forEach(r=>{const n=r&&r[ce]!=null?String(r[ce]).replace(/\u00a0/g,' ').trim():'';if(!n||seen.has(normE(n)))return;seen.add(normE(n));lista.push({nombre:n,provincia:cp>=0?String(r[cp]||'').trim():'',pais:cpa>=0?String(r[cpa]||'').trim():''})});
+    if(!lista.length)throw new Error('El listado está vacío.');
+    S.emp={lista,alias:S.emp.alias||{},archivo:f.name};openEmp(true);
+  }catch(err){toast('No se pudo leer el listado: '+(err.message||err))}});
+function openEmp(nuevo){const box=$('empBox'),L=S.emp.lista.map(x=>x.nombre).sort((a,b)=>a.localeCompare(b,'es'));
+  const projs=[...new Set((S.raw||OBRAS).map(o=>o.p))].sort((a,b)=>a.localeCompare(b,'es'));
+  let rev=0;const rows=projs.map(p=>{const a=autoEmp(p),al=S.emp.alias[p],cur=al==='__planner'||(!al&&a&&a.em===p)?'__planner':(al||(a?a.em:''));const how=S.emp.alias[p]?'manual':a?a.how:'sin asignar';if(how==='revisar'||how==='sin asignar')rev++;
+    return `<tr data-p="${esc(p)}"><td>${esc(p)} <span class="note">(${(S.raw||OBRAS).filter(o=>o.p===p).length} obras${(S.raw||[]).some(o=>o.p===p&&esPY(o))?' · Paraguay, fuera del cálculo':''})</span></td><td><select aria-label="Emprendimiento de ${esc(p)}"><option value="">— Sin asignar —</option><option value="__planner"${cur==='__planner'?' selected':''}>Usar el nombre de Planner: ${esc(p)}</option>${L.map(l=>`<option${l===cur?' selected':''}>${esc(l)}</option>`).join('')}</select></td><td class="${how==='revisar'||how==='sin asignar'?'emp-rev':'emp-ok'}">${how==='revisar'?'Revisar: solo coincide el código':how==='sin asignar'?'Revisar: sin coincidencia':how==='nombre de Planner'?'Nombre de Planner (en el listado figura '+esc(a.par)+')':how}</td></tr>`}).join('');
+  $('empTxt').innerHTML=`${nuevo?'Listado <b>'+esc(S.emp.archivo||'')+'</b>: ':''}<b>${L.length} emprendimientos</b>. Cada proyecto de Planner se asigna a un emprendimiento del listado. ${rev?`<span class="emp-rev">${rev} para revisar.</span>`:'Todos asignados.'}`;
+  $('empTable').innerHTML='<thead><tr><th>Proyecto de Planner</th><th>Emprendimiento</th><th>Cómo se asignó</th></tr></thead><tbody>'+rows+'</tbody>';
+  box.hidden=false;box.scrollIntoView({block:'nearest'})}
+$('empOpen').onclick=()=>openEmp(false);
+$('empCancel').onclick=()=>{$('empBox').hidden=true};
+$('empOk').onclick=async()=>{const alias={};$('empTable').querySelectorAll('tr[data-p]').forEach(tr=>{const v=tr.querySelector('select').value;const p=tr.dataset.p;const a=autoEmp(p);const auto=a?(a.em===p?'__planner':a.em):'';if(v&&(v!==auto||a.how==='revisar'))alias[p]=v});
+  Object.keys(S.emp.alias||{}).forEach(p=>{if(!(S.raw||OBRAS).some(o=>o.p===p))alias[p]=S.emp.alias[p]});
+  const doc={lista:S.emp.lista,alias,archivo:S.emp.archivo||'',cargado:new Date().toISOString()};
+  try{if(S.db)await S.db.doc('config/emprendimientos').set(doc);S.emp=doc;rebuild();buildFilters();$('empBox').hidden=true;render();toast('Emprendimientos guardados')}catch(e){writeFail(e)}};
+function empStatus(){const sinL=!S.emp.lista.length;const sinA=sinL?0:[...new Set(OBRAS.map(o=>o.p))].filter(p=>!S.emp.alias[p]&&!autoEmp(p)).length;
+  $('empLbl').hidden=!S.canWrite;$('empOpen').hidden=!(S.canWrite&&!sinL);
+  let n=$('empNote');if(!n){n=document.createElement('span');n.id='empNote';n.className='note';n.style.flexBasis='100%';$('dataSrc').after(n)}
+  n.textContent=sinL?'Sin listado de emprendimientos: se usan los nombres de proyecto de Planner.':(sinA?`${sinA} proyectos de Planner sin emprendimiento asignado.`:`Emprendimientos según ${S.emp.archivo||'el listado oficial'} (${S.emp.lista.length}).`)}
+
+// ---------- render ----------
+function render(){empStatus();
+  updHorizon();$('macroTitle').textContent='Inversión por año · '+Y0+'–'+Y1;
+  const list=filtered(),rc=refCh();const refS=series(list,rc),simS=series(list,S.changes);
+  S.bd=buildBD(list);renderYears();renderKPIs(list,refS,simS);renderChanges(list);renderMacro(refS,simS);renderMonthly(refS,simS);renderLegend();renderDetail();renderGantt();renderEsc();renderObj();
+}
+let tt;function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,3200)}
+let rz,lw=window.innerWidth;window.addEventListener('resize',()=>{if(window.innerWidth===lw)return;lw=window.innerWidth;clearTimeout(rz);rz=setTimeout(render,150)});
+
+paisUI();buildFilters();render();
+
+// ---------- capacidades (guardado compartido) ----------
+(async()=>{
+  if(!window.claude||!window.claude.use)return;
+  try{
+    const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
+    if(user){S.user=user;S.uid=await user.id();const cw=await user.can('data.write');S.canWrite=cw===null?!!db:cw}
+    if(!db){S.canWrite=false;render();return}
+    S.db=db;render();
+    db.collection('escenarios').onSnapshot(snap=>{S.escList=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es'));
+      if(S.esc&&!S.escList.find(x=>x.id===S.esc)){S.esc=null}if(S.ref&&!S.escList.find(x=>x.id===S.ref)){S.ref=null}render();resolveNames()},()=>{});
+    db.doc('config/objetivos').onSnapshot(d=>{S.objDoc=d.exists?d.data():{};paisUI();render()},()=>{});
+    db.doc('config/emprendimientos').onSnapshot(d=>{if(d.exists){const x=d.data();S.emp={lista:x.lista||[],alias:x.alias||{},archivo:x.archivo||''};rebuild();buildFilters();render()}},()=>{});
+    db.doc('base/obras').onSnapshot(d=>{if(d.exists&&Array.isArray(d.data().obras)&&d.data().obras.length){const x=d.data();setBase(x.obras,{archivo:x.archivo,cargado:x.cargado})}else if(!S.loaded)setBase([],null)},()=>{if(!S.loaded){$('sampleBanner').querySelector('b').textContent='No se pudo leer la base';$('dataSrc').textContent='Revisá la conexión y recargá la página.'}});
+  }catch(e){}
+})();
+})();
+</script>
+
+
+</body></html>
