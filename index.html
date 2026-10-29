@@ -105,7 +105,8 @@ body.fuera .plano text{display:none}
 </footer>
 <script>
 /* ═══ Herramientas ═══
-   herr: código de permiso (lista public.accesos). Sin herr: herramienta externa con su propio ingreso. */
+   herr: código de permiso. Cada usuario ve solo las herramientas de sus grupos (app_metadata.herramientas,
+   calculado por sql/010_grupos.sql). Ver docs/ACCESOS.md para sumar una herramienta o un grupo. */
 const HERRAMIENTAS = [
   { letra: 'A', herr: 'cabida', nombre: 'Análisis de Cabida', area: 'Planeamiento, Córdoba y Salta',
     desc: 'Normativa de cada lote, cabida máxima en m², cocheras y aprobaciones, y la cartera de lotes en análisis.', url: '/AnalisisCabida/' },
@@ -113,10 +114,10 @@ const HERRAMIENTAS = [
     desc: 'Escenarios del plan de inversión de obras: mové obras en el tiempo y compará contra la base de Planner.', url: '/simulador/' },
   { letra: 'C', herr: 'licitaciones', nombre: 'Licitaciones', area: 'Abastecimiento Estratégico (Compras)',
     desc: 'Estado de cada licitación de Abastecimiento Estratégico: plazos, etapas, cambios de la semana e histórico.', url: '/licitaciones/' },
-  { letra: 'D', nombre: 'Tablero de Loteos Natania 360', area: 'Loteos Natania',
+  { letra: 'D', herr: 'loteos', nombre: 'Tablero de Loteos Natania 360', area: 'Loteos Natania',
     desc: 'Stock de lotes, infraestructura y avance de cada emprendimiento.', url: 'https://mmmsa221.github.io/Ecipsa-Loteos/', nota: 'Tiene su propio ingreso' }
 ];
-const NOMBRES = { cabida: 'Análisis de Cabida', simulador: 'Simulación de Plan de Inversión', licitaciones: 'Estado de Licitaciones' };
+const NOMBRES = { cabida: 'Análisis de Cabida', simulador: 'Simulación de Plan de Inversión', licitaciones: 'Estado de Licitaciones', loteos: 'Tablero de Loteos Natania 360' };
 
 const $ = function (id) { return document.getElementById(id); };
 const esc = function (t) { return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
