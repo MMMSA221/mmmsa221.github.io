@@ -19,10 +19,16 @@
     return { id: s.user.id, email: s.user.email, nombre: m.nombre || s.user.email, rol: m.rol || 'user', herramientas: m.herramientas || [] };
   }
   async function sesion() { var r = await client.auth.getSession(); return r.data.session; }
+  // Pide al servidor una sesión nueva: trae los permisos vigentes (si se cambió el grupo, se ven sin volver a ingresar)
+  async function fresca() {
+    var s = await sesion(); if (!s) return null;
+    try { var r = await client.auth.refreshSession(); if (r.data && r.data.session) return r.data.session; } catch (e) { }
+    return s;
+  }
 
   var resolver;
   var ECI = {
-    SB_URL: SB_URL, SB_KEY: SB_KEY, client: client, usuario: usuario, sesion: sesion,
+    SB_URL: SB_URL, SB_KEY: SB_KEY, client: client, usuario: usuario, sesion: sesion, fresca: fresca,
     listo: new Promise(function (ok) { resolver = ok; }),
     token: async function () { var s = await sesion(); return s ? s.access_token : null; },
     // Encabezados para la API REST de Supabase con el usuario logueado
@@ -32,7 +38,15 @@
       sesion().then(function (s) {
         var u = usuario(s);
         if (!u) { location.replace(HALL + '?volver=' + encodeURIComponent(location.pathname + location.search + location.hash)); return; }
-        if (herramienta && u.herramientas.indexOf(herramienta) < 0) { location.replace(HALL + '?sin=' + encodeURIComponent(herramienta)); return; }
+        if (herramienta && u.herramientas.indexOf(herramienta) < 0) {
+          // Puede ser una sesión vieja: se renueva una vez antes de rechazar
+          return fresca().then(function (s2) {
+            var u2 = usuario(s2);
+            if (!u2 || u2.herramientas.indexOf(herramienta) < 0) { location.replace(HALL + '?sin=' + encodeURIComponent(herramienta)); return; }
+            document.documentElement.style.visibility = '';
+            resolver({ sesion: s2, usuario: u2 });
+          });
+        }
         document.documentElement.style.visibility = '';
         resolver({ sesion: s, usuario: u });
       }).catch(function () { location.replace(HALL); });

@@ -214,7 +214,7 @@ ECI.client.auth.onAuthStateChange(function (ev, s) {
   if (ev === 'PASSWORD_RECOVERY') { recuperando = true; U = ECI.usuario(s); $('uNom').textContent = U ? U.nombre : ''; ver('vClave'); msg('cMsg', 'ok', 'Elegí tu contraseña nueva.'); }
 });
 (async function () {
-  const s = await ECI.sesion();
+  const s = await ECI.fresca();   // permisos vigentes, aunque se hayan cambiado los grupos con la sesión abierta
   if (recuperando || location.hash.indexOf('type=recovery') >= 0) return;
   if (s) entrar(s); else { ver('vLogin'); $('lMail').focus(); }
 })();
