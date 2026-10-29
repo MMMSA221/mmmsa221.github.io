@@ -12,6 +12,16 @@ persona ──▶ grupos ──▶ herramientas
 
 Todo se administra en Supabase (proyecto de Herramientas) → **SQL Editor**. Las tablas viven en el esquema `admin`, que la web no puede leer.
 
+## Grupos vigentes
+
+| Grupo | Quiénes | Ve |
+|---|---|---|
+| `produccion` | Proyecto, gestiones, obra, planificación y costos | Cabida, Simulador, Licitaciones, Loteos |
+| `comercial` | Administración, comercial, Natania Directa, pre entrega | Loteos |
+| `proyeccion` | Proyección de inversiones | Simulador |
+
+Los miembros se cargan por SQL (no se guardan en este repo, que es público).
+
 ## Puesta en marcha (una sola vez)
 
 1. Correr la sección **0 (Diagnóstico)** de `sql/010_grupos.sql` y revisar quién tiene qué hoy.
@@ -27,13 +37,13 @@ select * from admin.v_accesos;
 
 **Poner a una persona en un grupo**
 ```sql
-insert into admin.grupo_miembros (grupo, email) values ('planeamiento', 'persona@construirsa.com')
+insert into admin.grupo_miembros (grupo, email) values ('produccion', 'persona@construirsa.com')
 on conflict do nothing;
 ```
 
 **Sacarla de un grupo**
 ```sql
-delete from admin.grupo_miembros where grupo = 'planeamiento' and email = 'persona@construirsa.com';
+delete from admin.grupo_miembros where grupo = 'produccion' and email = 'persona@construirsa.com';
 ```
 
 **Crear un grupo y darle herramientas**
@@ -56,7 +66,7 @@ La persona ve el cambio al volver a ingresar, o sola en menos de una hora.
 1. Cargar su ficha y sus grupos:
    ```sql
    insert into public.accesos (email, nombre, rol, activo) values ('persona@construirsa.com', 'Nombre Apellido', 'user', true);
-   insert into admin.grupo_miembros (grupo, email) values ('planeamiento', 'persona@construirsa.com');
+   insert into admin.grupo_miembros (grupo, email) values ('produccion', 'persona@construirsa.com');
    ```
 2. Crear el usuario en Supabase → Authentication → Users → "Add user" (mail y contraseña inicial, "Auto confirm"). Al crearse toma nombre, rol y herramientas de su ficha.
 

@@ -167,22 +167,23 @@ insert into admin.herramientas (codigo, nombre) values
 on conflict (codigo) do update set nombre = excluded.nombre;
 
 
--- ── 4. GRUPOS INICIALES (editar a gusto) ────────────────────────────────────
+-- ── 4. GRUPOS (definidos el 29/10/2026) ────────────────────────────────────
 insert into admin.grupos (codigo, nombre, descripcion) values
-  ('todas',          'Todas las herramientas', 'Administradores y dirección'),
-  ('planeamiento',   'Planeamiento',           'Análisis de Cabida'),
-  ('finanzas',       'Finanzas e inversiones', 'Simulador del plan de inversión'),
-  ('abastecimiento', 'Abastecimiento',         'Licitaciones'),
-  ('loteos',         'Loteos Natania',         'Tablero de Loteos')
-on conflict (codigo) do nothing;
+  ('produccion', 'Área Producción', 'Proyecto, gestiones, obra, planificación y costos: todas las herramientas'),
+  ('comercial',  'Área Comercial',  'Administración, comercial, Natania Directa, pre entrega: solo Loteos'),
+  ('proyeccion', 'Área Proyección', 'Solo el Simulador del plan de inversión')
+on conflict (codigo) do update set nombre = excluded.nombre, descripcion = excluded.descripcion;
 
 insert into admin.grupo_herramientas (grupo, herramienta) values
-  ('todas', 'cabida'), ('todas', 'simulador'), ('todas', 'licitaciones'), ('todas', 'loteos'),
-  ('planeamiento',   'cabida'),
-  ('finanzas',       'simulador'),
-  ('abastecimiento', 'licitaciones'),
-  ('loteos',         'loteos')
+  ('produccion', 'cabida'), ('produccion', 'simulador'), ('produccion', 'licitaciones'), ('produccion', 'loteos'),
+  ('comercial',  'loteos'),
+  ('proyeccion', 'simulador')
 on conflict do nothing;
+
+-- Grupos de prueba de una versión anterior de este script, si quedaron sin miembros
+delete from admin.grupos g
+ where g.codigo in ('todas', 'planeamiento', 'finanzas', 'abastecimiento', 'loteos')
+   and not exists (select 1 from admin.grupo_miembros m where m.grupo = g.codigo);
 
 
 -- ── 5. TRANSICIÓN: nadie pierde Loteos ──────────────────────────────────────
@@ -204,13 +205,13 @@ update auth.users
 
 -- ── 6. ASIGNAR PERSONAS (ejemplos; reemplazar los mails) ────────────────────
 -- insert into admin.grupo_miembros (grupo, email) values
---   ('todas',        'persona1@construirsa.com'),
---   ('planeamiento', 'persona2@construirsa.com'),
---   ('loteos',       'persona2@construirsa.com')
+--   ('produccion', 'persona1@construirsa.com'),
+--   ('comercial',  'persona2@construirsa.com'),
+--   ('proyeccion', 'persona2@construirsa.com')
 -- on conflict do nothing;
 --
 -- Sacar a alguien de un grupo:
--- delete from admin.grupo_miembros where grupo = 'finanzas' and email = 'persona@construirsa.com';
+-- delete from admin.grupo_miembros where grupo = 'proyeccion' and email = 'persona@construirsa.com';
 --
 -- Revisar el resultado:
 -- select * from admin.v_accesos;
