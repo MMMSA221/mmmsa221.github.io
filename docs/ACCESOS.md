@@ -52,11 +52,13 @@ group by g.codigo, g.nombre order by g.codigo;
 
 La persona ve el cambio al volver a ingresar, o sola en menos de una hora.
 
-**Usuario nuevo:** primero se crea en Supabase → Authentication → Users → "Add user" (con mail y contraseña inicial, marcando "Auto confirm"). Después se lo pone en sus grupos. El nombre que muestra el hall se carga en `app_metadata.nombre`:
-```sql
-update auth.users set raw_app_meta_data = raw_app_meta_data || '{"nombre":"Nombre Apellido"}'
-where email = 'persona@construirsa.com';
-```
+**Persona nueva:** 
+1. Cargar su ficha y sus grupos:
+   ```sql
+   insert into public.accesos (email, nombre, rol, activo) values ('persona@construirsa.com', 'Nombre Apellido', 'user', true);
+   insert into admin.grupo_miembros (grupo, email) values ('planeamiento', 'persona@construirsa.com');
+   ```
+2. Crear el usuario en Supabase → Authentication → Users → "Add user" (mail y contraseña inicial, "Auto confirm"). Al crearse toma nombre, rol y herramientas de su ficha.
 
 ## Sumar una herramienta nueva
 
@@ -74,4 +76,4 @@ where email = 'persona@construirsa.com';
 
 - `ECI.exigir` oculta la pantalla, pero **no protege los archivos** del repo: si los datos están dentro del repo (como `licitaciones/datos.js`), cualquiera con el link directo al archivo los puede bajar. Los datos sensibles tienen que vivir en Supabase con RLS.
 - El Tablero de Loteos tiene su propio login y otro Supabase: el grupo `loteos` solo decide si la tarjeta aparece en el hall.
-- La tabla vieja `public.accesos` (si existe) queda en desuso: los permisos se manejan desde los grupos.
+- `public.accesos` sigue siendo la ficha de cada persona (nombre, rol, activo). La columna `herramientas` la escriben los grupos: **no editarla a mano**, porque el próximo cambio de grupo la pisa. El trigger `accesos_al_crear_usuario` la usa al crear el usuario, así que se puede asignar el grupo antes de crear el usuario.

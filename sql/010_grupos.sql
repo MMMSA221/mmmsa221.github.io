@@ -4,8 +4,10 @@
 --
 -- Idea: cada persona pertenece a uno o más GRUPOS; cada grupo habilita
 -- HERRAMIENTAS. Al cambiar un grupo o sus miembros, un trigger recalcula
--- app_metadata.herramientas del usuario, que es lo que leen el hall y
--- /sesion.js (ECI.exigir). No hay que tocar el front para segmentar.
+-- las herramientas de la persona en public.accesos (de donde las toma el
+-- trigger accesos_al_crear_usuario al crear un usuario) y en el
+-- app_metadata del usuario (lo que leen el hall y ECI.exigir).
+-- public.accesos sigue guardando nombre, rol y activo como siempre.
 --
 -- Todo vive en el esquema "admin", que la API de Supabase NO expone:
 -- solo se administra desde el SQL Editor (o el Table Editor).
@@ -62,7 +64,7 @@ create table if not exists admin.grupo_miembros (
 -- Escribe en el usuario: herramientas = unión de las de sus grupos; grupos = sus grupos.
 -- Solo toca a quien se le pasa; nadie pierde accesos por correr este script.
 create or replace function admin.aplicar_accesos(p_email text)
-returns text[] language plpgsql security definer set search_path = admin, auth, pg_temp as $$
+returns text[] language plpgsql security definer set search_path = admin, public, auth, pg_temp as $$
 declare
   v_mail  text := lower(trim(p_email));
   v_herr  text[];
@@ -77,6 +79,18 @@ begin
     into v_grup
     from admin.grupo_miembros m where m.email = v_mail;
 
+  -- 1) public.accesos: la usa el trigger accesos_al_crear_usuario al crear el usuario.
+  --    Se mantiene al día para que no haya dos versiones de los permisos.
+  update public.accesos set herramientas = v_herr where lower(email) = v_mail;
+  if not found and array_length(v_grup, 1) > 0 then
+    begin
+      insert into public.accesos (email, herramientas, activo) values (v_mail, v_herr, true);
+    exception when others then
+      raise notice 'No se pudo crear la fila de % en public.accesos (%). Cargala a mano con su nombre.', v_mail, sqlerrm;
+    end;
+  end if;
+
+  -- 2) El usuario (si ya existe): es lo que leen el hall y ECI.exigir.
   update auth.users
      set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
                              || jsonb_build_object('herramientas', to_jsonb(v_herr),
@@ -89,7 +103,7 @@ end $$;
 
 -- Recalcula a todos los que están en algún grupo
 create or replace function admin.aplicar_todos()
-returns integer language plpgsql security definer set search_path = admin, auth, pg_temp as $$
+returns integer language plpgsql security definer set search_path = admin, public, auth, pg_temp as $$
 declare r record; n integer := 0;
 begin
   for r in select distinct email from admin.grupo_miembros loop
@@ -100,7 +114,7 @@ end $$;
 
 -- Trigger: alta / baja / cambio de miembro
 create or replace function admin.tg_miembros()
-returns trigger language plpgsql security definer set search_path = admin, auth, pg_temp as $$
+returns trigger language plpgsql security definer set search_path = admin, public, auth, pg_temp as $$
 begin
   if tg_op in ('INSERT', 'UPDATE') then perform admin.aplicar_accesos(new.email); end if;
   if tg_op in ('DELETE', 'UPDATE') then perform admin.aplicar_accesos(old.email); end if;
@@ -113,7 +127,7 @@ create trigger aplicar_miembros after insert or update or delete on admin.grupo_
 
 -- Trigger: se agrega o quita una herramienta a un grupo → recalcula a sus miembros
 create or replace function admin.tg_grupo_herramientas()
-returns trigger language plpgsql security definer set search_path = admin, auth, pg_temp as $$
+returns trigger language plpgsql security definer set search_path = admin, public, auth, pg_temp as $$
 declare r record;
 begin
   for r in select distinct email from admin.grupo_miembros
@@ -175,6 +189,11 @@ on conflict do nothing;
 -- Hasta hoy la tarjeta de Loteos la veía todo usuario logueado. Desde ahora
 -- exige el código 'loteos'. Se lo agrega a quien ya está dado de alta, para
 -- que nada cambie hasta que se le asigne un grupo (ahí se recalcula todo).
+update public.accesos
+   set herramientas = array_append(coalesce(herramientas, '{}'), 'loteos')
+ where not ('loteos' = any(coalesce(herramientas, '{}')))
+   and not exists (select 1 from admin.grupo_miembros m where m.email = lower(public.accesos.email));
+
 update auth.users
    set raw_app_meta_data = jsonb_set(coalesce(raw_app_meta_data, '{}'::jsonb), '{herramientas}',
                                      coalesce(raw_app_meta_data->'herramientas', '[]'::jsonb) || '["loteos"]'::jsonb),
