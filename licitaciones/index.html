@@ -189,7 +189,7 @@ button.lt-tile[aria-pressed="true"] { border-color: var(--lt-orange); box-shadow
       <button type="button" class="lt-tile lt-pick is-bad" id="t-vencidas" data-sit="Vencida" aria-pressed="false"><span class="lt-tile-label">Fuera de plazo</span><span class="lt-tile-num" data-source="resumen" data-field="vencidas">—</span><span class="lt-tile-sub" data-source="resumen" data-field="delta_vencidas">—</span></button>
       <button type="button" class="lt-tile lt-pick is-warn" id="t-porvencer" data-sit="Por vencer" aria-pressed="false"><span class="lt-tile-label">Vencen en ≤ 7 días</span><span class="lt-tile-num" data-source="resumen" data-field="por_vencer">—</span><span class="lt-tile-sub">Atender esta semana</span></button>
       <button type="button" class="lt-tile lt-pick" id="t-enplazo" data-sit="En plazo" aria-pressed="false"><span class="lt-tile-label">En plazo</span><span class="lt-tile-num" data-source="resumen" data-field="en_plazo">—</span><span class="lt-tile-sub">Más de 7 días de margen</span></button>
-      <button type="button" class="lt-tile lt-pick" id="t-sinfecha" data-sit="sin" aria-pressed="false"><span class="lt-tile-label">Sin fecha RFQ</span><span class="lt-tile-num" data-source="resumen" data-field="sin_fecha">—</span><span class="lt-tile-sub">No se puede medir el plazo</span></button>
+      <button type="button" class="lt-tile lt-pick" id="t-sinfecha" data-sit="sin" aria-pressed="false"><span class="lt-tile-label">Sin fecha o sin plazo</span><span class="lt-tile-num" data-source="resumen" data-field="sin_fecha">—</span><span class="lt-tile-sub">No se puede medir el plazo</span></button>
     </div>
 
     <div class="lt-filtros" id="filtros" hidden>
@@ -263,7 +263,7 @@ button.lt-tile[aria-pressed="true"] { border-color: var(--lt-orange); box-shadow
     <div class="lt-tiles">
       <div class="lt-tile" id="t-nuevas"><span class="lt-tile-label">Nuevas</span><span class="lt-tile-num" data-source="resumen" data-field="nuevas">—</span><span class="lt-tile-sub">Filas agregadas al informe</span></div>
       <div class="lt-tile" id="t-cambios"><span class="lt-tile-label">Cambiaron de estado</span><span class="lt-tile-num" data-source="resumen" data-field="cambios_estado">—</span><span class="lt-tile-sub">Siguen en gestión</span></div>
-      <div class="lt-tile" id="t-cerradas"><span class="lt-tile-label">Cerradas</span><span class="lt-tile-num" data-source="resumen" data-field="cerradas_semana">—</span><span class="lt-tile-sub">Contratadas, con OC enviada o finalizadas</span></div>
+      <div class="lt-tile" id="t-cerradas"><span class="lt-tile-label">Cerradas</span><span class="lt-tile-num" data-source="resumen" data-field="cerradas_semana">—</span><span class="lt-tile-sub">Salieron de gestión: contratadas, con OC, finalizadas o suspendidas</span></div>
     </div>
 
     <div class="lt-card" id="card-evol">
@@ -767,7 +767,9 @@ dash.calc('por_categoria', {
   const drawMov = () => {
     const tb = $('#tb-mov tbody'); tb.replaceChildren();
     const d = dash.data('movimientos'); if (d.status !== 'ok') return;
-    const sems = [...new Set(d.data.map((r) => r.semana))].sort().reverse();
+    const ev = dash.data('evolucion').data || [];
+    const todas = [...new Set(ev.map((r) => r.semana))].sort();
+    const sems = [...new Set(d.data.map((r) => r.semana).concat(todas.slice(1)))].sort().reverse();
     const sel = $('#f-sem'); const cur = sel.value;
     sel.replaceChildren(...sems.map((s) => new Option('Viernes ' + fmtFecha(s), s)));
     sel.value = sems.includes(cur) ? cur : (sems[0] || '');
