@@ -4,10 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tablero Licitaciones · Grupo ECIPSA</title>
-<!-- Sesión única del hall: sin sesión o sin el permiso 'licitaciones' vuelve a https://mmmsa221.github.io/ -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="/sesion.js"></script>
-<script>ECI.exigir('licitaciones');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -131,6 +127,11 @@ button.lt-tile[aria-pressed="true"] { border-color: var(--lt-orange); box-shadow
 .lt-pill[data-s="Fuera del informe"] { color: var(--color-warn); }
 .lt-pill[data-s="Cerrada a tiempo"], .lt-pill[data-s="En curso, dentro del plan"] { color: var(--color-ok); }
 .lt-pill[data-s="Suspendida"], .lt-pill[data-s="Todavía no arrancó"], .lt-pill[data-s="Cerrada sin fecha"] { color: var(--color-fg-muted); }
+.lt-est { display: inline-block; padding: 3px 8px; border-radius: 6px; color: #1f1f1f; border: 1px solid rgba(0,0,0,.12); line-height: 1.35; }
+.lt-fill-area { box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.lt-leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.lt-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.lt-leyenda i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.2); display: inline-block; }
 .lt-arrow { color: var(--color-fg-muted); padding-inline: 4px; }
 .lt-empty { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); padding: var(--cds-pad-md) 0; }
 .lt-cols { display: flex; align-items: flex-end; gap: var(--cds-gap-sm); height: 200px; padding-top: 1.4rem; }
@@ -212,6 +213,17 @@ button.lt-tile[aria-pressed="true"] { border-color: var(--lt-orange); box-shadow
 
     <div class="lt-card" id="card-activas">
       <h2>Licitaciones en gestión</h2>
+      <div class="lt-leyenda" id="ley-estados" aria-label="Colores de estado">
+        <span><i style="background:#FFFF99"></i>Compras</span>
+        <span><i style="background:#B7DEE8"></i>Costos (4 - Revisión de Ofertas) y Técnica / Requirente</span>
+        <span><i style="background:#4F81BD"></i>Técnica: pend. liberación Solped / OC</span>
+        <span><i style="background:#B1A0C7"></i>Proveedor</span>
+        <span><i style="background:#FABF8F"></i>Contratos</span>
+        <span><i style="background:#BFBFBF"></i>Directorio</span>
+        <span><i style="background:#C4BD97"></i>Contabilidad</span>
+        <span><i style="background:#CCC1DA"></i>Legales / Finanzas</span>
+        <span><i style="background:#D99694"></i>Control de Gestión</span>
+      </div>
       <p class="lt-note">Días restantes = días de licitación y adjudicación de la categoría menos los días desde la recepción de RFQ (o el relanzamiento) hasta la fecha del informe. Ordenadas de la más atrasada a la más holgada.</p>
       <div class="lt-tools">
         <label class="lt-field" for="f-resp">Asignada a
@@ -534,6 +546,30 @@ dash.calc('por_categoria', {
   let tab = 'activas';
 
   const td = (tr, text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.appendChild(c); return c; };
+  /* Colores de estado: los mismos de la planilla de Compras (formato condicional de la columna Estado) */
+  const EST_COLOR = { 3: '#FFFF99', 5: '#FFFF99', 6: '#BFBFBF', 7: '#FABF8F', 8: '#FABF8F', 9: '#B2DE82', 10: '#D85454', 11: '#808080',
+    12: '#B7DEE8', 13: '#4F81BD', 14: '#4F81BD', 15: '#B1A0C7', 16: '#C4BD97', 17: '#FFC000', 18: '#B2DE82', 19: '#CCC1DA', 20: '#CCC1DA', 21: '#D99694', 22: '#FB9205', 4: '#B7DEE8' };
+  const COMPRAS = '#FFFF99';
+  const colorEstado = (e) => {
+    const n = parseInt(e, 10); if (!n) return null;
+    /* Todo lo que tiene Compras va con el mismo color; el texto del estado los distingue. El 4 es Costos (área técnica) */
+    if (n === 4) return '#B7DEE8';
+    if (/\(Compras\)/i.test(e) || [23, 24].includes(n)) return COMPRAS;
+    if (n === 1 || n === 2) return '#B7DEE8';
+    return EST_COLOR[n] || null;
+  };
+  const AREA_COLOR = { 'Compras': '#FFFF99', 'Costos': '#B7DEE8', 'Técnica/Requirente': '#B7DEE8', 'Proveedor': '#B1A0C7', 'Contratos': '#FABF8F', 'Directorio': '#BFBFBF',
+    'Contab': '#C4BD97', 'Finanzas': '#CCC1DA', 'Legales': '#CCC1DA', 'Control de Gestión': '#D99694' };
+  const estCell = (tr, e, cls) => {
+    const c = td(tr, '', cls);
+    const col = colorEstado(e);
+    if (!e) { c.textContent = '—'; return c; }
+    const sp = document.createElement('span'); sp.className = 'lt-est';
+    sp.textContent = parseInt(e, 10) === 4 ? e.replace(/\(T[eé]cnica\/Requirente\)/i, '(Costos)') : e;
+    if (col) { sp.style.background = col; if (['#4F81BD', '#D85454', '#808080'].includes(col)) sp.style.color = '#FFFFFF'; }
+    c.appendChild(sp);
+    return c;
+  };
   const pill = (cell, s) => { cell.textContent = ''; const p = document.createElement('span'); p.className = 'lt-pill'; p.dataset.s = s; p.textContent = s; cell.appendChild(p); };
   const empty = (tbody, cols, msg) => { const tr = document.createElement('tr'); const c = td(tr, msg, 'lt-empty'); c.colSpan = cols; tbody.appendChild(tr); };
   const setOptions = (sel, values, allLabel) => {
@@ -589,6 +625,7 @@ dash.calc('por_categoria', {
       const l = document.createElement('span'); l.className = 'lt-lbl'; l.textContent = k; l.title = k;
       const t = document.createElement('div'); t.className = 'lt-track';
       const f = document.createElement('div'); f.className = 'lt-fill'; f.style.width = (n / max * 100) + '%'; t.appendChild(f);
+      if (fkey === 'resp' && AREA_COLOR[k]) { f.style.background = AREA_COLOR[k]; f.classList.add('lt-fill-area'); }
       const v = document.createElement('span'); v.className = 'lt-val'; v.textContent = n;
       row.append(l, t, v);
       row.addEventListener('click', () => setF(fkey, k));
@@ -717,7 +754,7 @@ dash.calc('por_categoria', {
       td(tr, r.detalle, 'lt-wide');
       td(tr, r.proyecto, 'lt-hide-sm');
       td(tr, r.asignada);
-      td(tr, r.estado);
+      estCell(tr, r.estado);
       td(tr, fmtFecha(r.fecha_rfq), 'lt-num lt-hide-sm');
       td(tr, r.dias_restantes === '' ? '—' : r.dias_restantes, 'lt-num');
       pill(td(tr, ''), r.semaforo);
@@ -741,7 +778,7 @@ dash.calc('por_categoria', {
       const tr = document.createElement('tr'); tr.dataset.key = enc(r.semana) + ',' + enc(r.clave);
       td(tr, r.clave, 'lt-key'); pill(td(tr, ''), r.tipo);
       td(tr, r.detalle, 'lt-wide'); td(tr, r.proyecto, 'lt-hide-sm');
-      td(tr, r.estado_anterior || '—', 'lt-hide-sm'); td(tr, r.estado_nuevo);
+      estCell(tr, r.estado_anterior, 'lt-hide-sm'); estCell(tr, r.estado_nuevo);
       tb.appendChild(tr);
     });
   };
@@ -776,7 +813,7 @@ dash.calc('por_categoria', {
     shown.forEach((r) => {
       const tr = document.createElement('tr');
       td(tr, r.clave, 'lt-key'); td(tr, r.detalle, 'lt-wide'); td(tr, r.proyecto, 'lt-hide-sm'); td(tr, r.asignada);
-      td(tr, r.estado); td(tr, r.proveedor || '—', 'lt-hide-sm'); td(tr, fmtFecha(r.fecha_adjudicacion), 'lt-num lt-hide-sm');
+      estCell(tr, r.estado); td(tr, r.proveedor || '—', 'lt-hide-sm'); td(tr, fmtFecha(r.fecha_adjudicacion), 'lt-num lt-hide-sm');
       tb.appendChild(tr);
     });
     $('#cnt-all').textContent = rows.length > shown.length ? `Mostrando los ${shown.length} más recientes de ${rows.length}. Afiná la búsqueda para ver el resto.` : `${rows.length} procesos.`;
