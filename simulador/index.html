@@ -142,7 +142,7 @@ svg .grid{stroke:var(--line-2)}
 .ctl input{width:56px;height:32px;text-align:center;padding:0 4px;font-variant-numeric:tabular-nums}
 .ctl-sub{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap}
 .ctl-sub b{color:var(--fg);font-weight:600}
-.ctl.ant{margin-top:6px;gap:6px}.ctl.ant input{width:60px}
+.ctl.ant{margin-top:6px;gap:6px}.ctl.ant input{width:64px}.ant-sub{margin-top:2px;white-space:normal}.ant-sub b{color:var(--ant)}
 .otot{font-size:12px;color:var(--fg-2);margin-top:4px;display:flex;flex-direction:column;gap:2px}
 .otot b{color:var(--fg)}
 .oyrs{display:flex;flex-wrap:wrap;gap:2px 10px}
@@ -265,7 +265,7 @@ footer{border-top:1px solid var(--line)}
 <header class="eci-barra">
   <div class="eci-barra-in">
     <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver a las herramientas"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
-    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 27-10 n</span></span>
+    <span class="eci-ruta"><a href="/">Herramientas</a> / Simulador del plan de inversión <span style="font-weight:400;font-size:12px">· versión 02-11 b</span></span>
     <div class="eci-usuario"><span class="nombre" id="uNom"></span><span class="role" id="role">Visualizador</span><button class="eci-link" onclick="ECI.salir()">Salir</button></div>
   </div>
 </header>
@@ -388,7 +388,7 @@ footer{border-top:1px solid var(--line)}
         <label class="toggle" id="onlyYearLbl"><input type="checkbox" id="onlyYear" checked> <span id="onlyYearTxt">Solo obras del año foco</span></label>
         <label class="toggle"><input type="checkbox" id="onlyChanged"> Solo obras movidas</label>
       </div></div>
-    <p class="note" style="margin:0 0 12px">Inicio: corré la obra de a meses con − / + o escribí el desplazamiento (ej. 6 o −2). Plazo: cambiá la duración en meses. Anticipo: el % se paga el mes anterior al inicio de obra (barra fucsia) y el resto se reparte en los meses de obra (Edificios con la curva de inversión de 24 meses recalculada al plazo; las demás en partes iguales). Debajo de cada obra ves su monto total y cómo se reparte por año. Las obras con avance mayor a 0% están bloqueadas. Nada puede caer antes del mes en curso: si una obra empieza este mes y le cargás anticipo, se corre un mes.</p>
+    <p class="note" style="margin:0 0 12px">Inicio: corré la obra de a meses con − / + o escribí el desplazamiento (ej. 6 o −2). Plazo: cambiá la duración en meses. Anticipo: viene de la tarea “Anticipo” de Planner y se paga en un solo pago el mes anterior al inicio de obra (barra fucsia); se mueve junto con la obra. Podés simular otro % de anticipo: el total no cambia, se reparte entre anticipo y obra. El monto de la tarea Obra se reparte en los meses de obra (Edificios con la curva de inversión de 24 meses recalculada al plazo, al 100 %; las demás en partes iguales). Total = anticipo + obra. Debajo de cada obra ves su monto total y cómo se reparte por año. Las obras con avance mayor a 0% están bloqueadas. Nada puede caer antes del mes en curso, tampoco el anticipo.</p>
     <div class="gwrap"><table class="gt" id="gt"></table></div>
   </section>
 
@@ -494,31 +494,40 @@ function curvaPct(base,dur,ant){
   const r=n/dur,out=[];for(let j=1;j<=dur;j++)out.push((ac(j*r)-ac((j-1)*r))*(1-ant));
   _curvas.set(key,out);return out;
 }
-function distribuir(obra, dur, ant){
-  ant=ant||0;
-  if(esEdificio(obra))return curvaPct(CURVA_ED,dur,ant).map(x=>x*obra.m);
-  // Resto: partes iguales sobre lo que queda después del anticipo
-  const p=obra.m*(1-ant)/dur; return Array.from({length:dur},()=>p);
+// Meses de obra: monto de obra (por defecto el de la tarea Obra de Planner, ya sin el anticipo). Edificios: curva al 100 %; resto: partes iguales.
+function distribuir(obra, dur, monto){
+  const m=monto==null?obra.m:monto;
+  if(obra.esAnt)return [m].concat(Array(dur-1).fill(0));   // anticipo sin obra vinculada: pago único en su mes
+  if(esEdificio(obra))return curvaPct(CURVA_ED,dur,0).map(x=>x*m);
+  const p=m/dur; return Array.from({length:dur},()=>p);
 }
-// Flujo completo de una obra: anticipo (si hay) el mes anterior al inicio + meses de obra. i = primer mes con plata.
-function flujo(o,p){const v=distribuir(o,p.d,p.a);return p.a?{i:p.s-1,v:[o.m*p.a].concat(v)}:{i:p.s,v}}
+const totObra=o=>(o.m||0)+(o.ant||0);
+// % de anticipo: el de Planner (anticipo ÷ total) o el que se simula en el escenario (p.a). El total no cambia:
+// anticipo = total × %, obra = total × (1 − %).
+const antPct0=o=>totObra(o)?(o.ant||0)/totObra(o):0;
+const antOf=(o,p)=>p&&p.a!=null?totObra(o)*p.a:(o.ant||0);
+const obraOf=(o,p)=>totObra(o)-antOf(o,p);
+const puedeAnt=o=>o.ant>0&&!o.lock&&!o.esAnt;   // se puede simular el % en obras con anticipo de Planner
+// Flujo completo: anticipo en un pago único el MES ANTERIOR al inicio + meses de obra. i = primer mes con plata.
+function flujo(o,p){const a=antOf(o,p),v=distribuir(o,p.d,obraOf(o,p));return a>0?{i:p.s-1,v:[a].concat(v)}:{i:p.s,v}}
 function valAt(o,p,m){const f=flujo(o,p),k=m-f.i;return k>=0&&k<f.v.length?f.v[k]:0}
 function plan(o, ch){
   const c=ch&&ch[o.id]||{};
-  if(o.lock) return {s:o.s0,d:o.d0,a:0};
-  return {s:o.s0+(c.s||0), d:Math.max(1,o.d0+(c.d||0)), a:c.a||0};
+  if(o.lock) return {s:o.s0,d:o.d0,a:null};
+  return {s:o.s0+(c.s||0), d:o.esAnt?1:Math.max(1,o.d0+(c.d||0)), a:puedeAnt(o)&&c.a!=null?c.a:null};
 }
 function minShift(o){ return o.s0>=NOW ? NOW-o.s0 : 0; }
 // Única restricción: nada antes del mes en curso (tampoco el anticipo) y durar al menos 1 mes. Sin tope de años.
 function clampChange(o,s,d,a){
-  s=Math.round(s||0); d=Math.round(d||0);
+  s=Math.round(s||0); d=o.esAnt?0:Math.round(d||0);
   if(o.d0+d<1)d=1-o.d0;
-  a=Math.min(1,Math.max(0,Math.round((+a||0)*1000)/1000));  // anticipo: fracción 0–1, se paga el mes anterior al inicio
-  s=Math.max(minShift(o)+(a&&o.s0>=NOW?1:0),s);
-  const r={s,d};if(a)r.a=a;return r;
+  if(a!=null){a=Math.min(1,Math.max(0,Math.round(a*1e4)/1e4));if(!puedeAnt(o)||Math.abs(a-antPct0(o))<5e-5)a=null}   // igual al de Planner = sin cambio
+  const conAnt=a!=null?a>0:o.ant>0;
+  s=Math.max(minShift(o)+(conAnt&&o.s0>=NOW?1:0),s);   // con anticipo, el anticipo tampoco puede quedar antes del mes en curso
+  const r={s,d};if(a!=null)r.a=a;return r;
 }
 // El horizonte termina en el último año con inversión (simulación, referencia o base): sin años vacíos al final. Si una obra se corre más lejos, se estira solo.
-function updHorizon(){let y=YMIN_END;const rc=refCh();OBRAS.forEach(o=>{if(!(o.m>0))return;[S.changes,rc,null].forEach(ch=>{const p=plan(o,ch);y=Math.max(y,Math.floor((p.s+p.d-1)/12))})});Y1=y;if(S.year>Y1)S.year=Y1}
+function updHorizon(){let y=YMIN_END;const rc=refCh();OBRAS.forEach(o=>{if(!(totObra(o)>0))return;[S.changes,rc,null].forEach(ch=>{const p=plan(o,ch);y=Math.max(y,Math.floor((p.s+p.d-1)/12))})});Y1=y;if(S.year>Y1)S.year=Y1}
 function series(list, ch){
   const out=new Map();
   list.forEach(o=>{const f=flujo(o,plan(o,ch));f.v.forEach((x,k)=>{const m=f.i+k;out.set(m,(out.get(m)||0)+x)})});
@@ -532,8 +541,8 @@ function filtered(){
 }
 const refCh=()=>{if(!S.ref)return null;const r=S.escList.find(x=>x.id===S.ref);return r?r.cambios||{}:null};
 const refName=()=>{if(!S.ref)return 'Base (Planner)';const r=S.escList.find(x=>x.id===S.ref);return r?r.nombre:'Base (Planner)'};
-const samePlan=(a,b)=>a.s===b.s&&a.d===b.d&&(a.a||0)===(b.a||0);
-const isChanged=o=>{const c=S.changes[o.id];return !o.lock&&c&&((c.s||0)!==0||(c.d||0)!==0||(c.a||0)!==0)};
+const samePlan=(a,b)=>a.s===b.s&&a.d===b.d&&(a.a==null?null:a.a)===(b.a==null?null:b.a);
+const isChanged=o=>{const c=S.changes[o.id];return !o.lock&&c&&((c.s||0)!==0||(!o.esAnt&&(c.d||0)!==0)||(puedeAnt(o)&&c.a!=null))};
 const differs=(o,rc)=>!samePlan(plan(o,S.changes),plan(o,rc));
 
 // ---------- filtros ----------
@@ -589,7 +598,7 @@ function renderChanges(list){
   let h='<thead><tr><th>Obra</th><th>Inicio</th><th>Plazo</th><th>Mueve entre años</th></tr></thead><tbody>';
   rows.sort((a,b)=>a.p.localeCompare(b.p,'es')).forEach(o=>{const a=plan(o,rc),b=plan(o,S.changes);
     const mv=[];for(let y=Y0;y<=Y1;y++){const d=yearOf(o,S.changes,y)-yearOf(o,rc,y);if(Math.abs(d)>0.5)mv.push(`${y} ${d>0?'+':'−'}${fmtM(Math.abs(d))}`)}
-    h+=`<tr><td><b>${esc(o.o)}</b><div class="note">${esc(o.p)}</div></td><td class="num">${mLabel(a.s)} → <b>${mLabel(b.s)}</b></td><td class="num">${a.d} → <b>${b.d}</b> meses${(a.a||b.a)?`<br>anticipo ${nf((a.a||0)*100,1)}% → <b>${nf((b.a||0)*100,1)}%</b>`:''}</td><td class="num">${mv.join('<br>')||'<span class="note">Queda en el mismo año</span>'}</td></tr>`});
+    h+=`<tr><td><b>${esc(o.o)}</b><div class="note">${esc(o.p)}</div></td><td class="num">${mLabel(a.s)} → <b>${mLabel(b.s)}</b></td><td class="num">${a.d} → <b>${b.d}</b> meses${(a.a!=null||b.a!=null)?`<br>anticipo ${nf((a.a!=null?a.a:antPct0(o))*100,1)}% → <b>${nf((b.a!=null?b.a:antPct0(o))*100,1)}%</b>`:''}</td><td class="num">${mv.join('<br>')||'<span class="note">Queda en el mismo año</span>'}</td></tr>`});
   $('chgTable').innerHTML=h+'</tbody>';
 }
 
@@ -622,7 +631,7 @@ const catOf=o=>{const v=S.dim==='t'?o.t:S.dim==='p'?o.em:S.dim==='pp'?o.p:S.dim=
 function colN(i){if(i<7)return 'var(--c'+(i+1)+')';const h=Math.round((i*137.508)%360),l=[48,62,38][i%3],c=[62,48,70][Math.floor(i/3)%3];return `hsl(${h} ${c}% ${l}%)`}
 function buildBD(list){ // todas las categorías, ordenadas por inversión simulada total (sin agrupar en "Otros")
   if(!S.dim)return null;const tot=new Map();
-  list.forEach(o=>{const k=catOf(o);tot.set(k,(tot.get(k)||0)+o.m)});
+  list.forEach(o=>{const k=catOf(o);tot.set(k,(tot.get(k)||0)+totObra(o))});
   const order=[...tot.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
   const col={};order.forEach((c,i)=>col[c]=colN(i));
   const sim=new Map();order.forEach(c=>sim.set(c,new Map()));
@@ -726,13 +735,13 @@ function renderGantt(){
     if(o.em!==cur){cur=o.em;const grp=list.filter(x=>x.em===cur);let gs=0,gb=0;grp.forEach(x=>{gs+=amt(x,S.changes);gb+=amt(x,rc)});
       h+=`<tr class="grp"><td colspan="4">${esc(cur)}</td><td class="num" style="text-align:right">${fmtM(gs)}</td><td class="num" style="text-align:right">${dlt(gs-gb)}</td></tr>`}
     const p=plan(o,S.changes),r=plan(o,rc),c=S.changes[o.id]||{},sh=o.lock?0:(c.s||0),dd=o.lock?0:(c.d||0);
-    const dist=distribuir(o,p.d,p.a); const yb=amt(o,rc), ys=amt(o,S.changes), py=yearsOf(o,S.changes);
+    const dist=distribuir(o,p.d,obraOf(o,p)),aM=antOf(o,p); const yb=amt(o,rc), ys=amt(o,S.changes), py=yearsOf(o,S.changes);
     totS+=ys;totD+=ys-yb;{const f=flujo(o,p);f.v.forEach((v,k)=>{const m=f.i+k;if(m>=Ys&&m<=Ye)totM[porAnio?Math.floor(m/12)-yA:m-Ys]+=v})}
     const vencido=!o.lock&&o.s0<NOW;
-    const tags=[o.lock?`<span class="pill lock">Bloqueada · en curso ${nf(o.pct*100,0)}%</span>`:'',vencido?'<span class="pill warn">Inicio vencido, sin avance</span>':'',!o.m?'<span class="pill warn">Sin presupuesto</span>':'',isChanged(o)?'<span class="pill mod">Movida</span>':''].join('');
+    const tags=[o.lock?`<span class="pill lock">Bloqueada · en curso ${nf(o.pct*100,0)}%</span>`:'',vencido?'<span class="pill warn">Inicio vencido, sin avance</span>':'',!totObra(o)?'<span class="pill warn">Sin presupuesto</span>':'',o.esAnt?'<span class="pill warn">Anticipo sin obra vinculada</span>':'',isChanged(o)?'<span class="pill mod">Movida</span>':''].join('');
     const dis=o.lock?'disabled':'';
     h+=`<tr class="${isChanged(o)?'changed':''}" data-id="${esc(o.id)}">
-      <td><div class="oname">${esc(o.o)}</div><div class="ometa">${o.p!==o.em?`<span>${esc(o.p)}</span>`:''}<span>${esc(o.t)}</span><span>${esc(o.pr)}</span>${o.link?`<a href="${esc(o.link)}" target="_blank" rel="noopener">Planner ↗</a>`:''}</div><div class="otot"><span>Total obra <b class="num">${fmtM(o.m)}</b>${p.a?` · anticipo ${nf(p.a*100,1)}% (${fmtM(o.m*p.a)}) en ${mLabel(p.s-1)}`:''}</span><span class="oyrs">${py.map(x=>`<span class="${x.y===y?'foc':''}">${x.y} <b class="num">${fmtM(x.v)}</b> <i>${o.m?nf(x.v/o.m*100,0):0}%</i></span>`).join('')}</span></div><div class="ometa">${tags}</div></td>
+      <td><div class="oname">${esc(o.o)}</div><div class="ometa">${o.p!==o.em?`<span>${esc(o.p)}</span>`:''}<span>${esc(o.t)}</span><span>${esc(o.pr)}</span>${o.link?`<a href="${esc(o.link)}" target="_blank" rel="noopener">Planner ↗</a>`:''}</div><div class="otot"><span>Total obra <b class="num">${fmtM(totObra(o))}</b>${aM>0||o.ant>0?` = anticipo <b class="num">${fmtM(aM)}</b> (${nf(aM/totObra(o)*100,1)}%, ${mLabel(p.s-1)}) + obra <b class="num">${fmtM(obraOf(o,p))}</b>`:''}</span><span class="oyrs">${py.map(x=>`<span class="${x.y===y?'foc':''}">${x.y} <b class="num">${fmtM(x.v)}</b> <i>${totObra(o)?nf(x.v/totObra(o)*100,0):0}%</i></span>`).join('')}</span></div><div class="ometa">${tags}</div></td>
       <td><div class="ctl"><button class="b" type="button" data-a="s-" ${dis||(sh<=minShift(o)?'disabled':'')} aria-label="Adelantar un mes">−</button>
         <input type="number" step="1" data-a="s" value="${sh}" ${dis} aria-label="Desplazamiento en meses de ${esc(o.o)}">
         <button class="b" type="button" data-a="s+" ${dis} aria-label="Atrasar un mes">+</button></div>
@@ -741,7 +750,8 @@ function renderGantt(){
         <input type="number" min="1" step="1" data-a="d" value="${p.d}" ${dis} aria-label="Plazo en meses de ${esc(o.o)}">
         <button class="b" type="button" data-a="d+" ${dis} aria-label="Alargar plazo">+</button></div>
         <div class="ctl-sub">${p.d===1?'1 mes':p.d+' meses'}${dd?` · base ${o.d0}`:''} · fin <b>${mLabel(p.s+p.d-1)}</b></div>
-        ${!o.lock?`<div class="ctl ant"><span class="ctl-sub">Anticipo</span><input type="number" min="0" max="100" step="1" data-a="a" value="${nf(p.a*100,1).replace(',','.')}" ${dis} aria-label="Anticipo en % de ${esc(o.o)}"><span class="ctl-sub">%</span></div>`:''}</td>
+        ${o.ant>0?`<div class="ctl ant" title="${esc((o.antDe||[]).join(' · '))}"><span class="ctl-sub">Anticipo</span><input type="number" min="0" max="100" step="0.5" data-a="a" value="${String(Math.round((p.a!=null?p.a:antPct0(o))*1000)/10)}" ${dis} aria-label="Anticipo en % de ${esc(o.o)}"><span class="ctl-sub">%</span></div>
+        <div class="ctl-sub ant-sub"><b>${fmtM(aM)}</b> en ${mLabel(p.s-1)}${p.a!=null?` · Planner ${nf(antPct0(o)*100,1)}% (${fmtM(o.ant)})`:' · de Planner'}</div>`:''}</td>
       <td>${tlCell(o,p,r,Ys,Ye,dist,NC)}</td>
       <td class="num" style="text-align:right;font-weight:600">${fmtM(ys)}</td>
       <td class="num" style="text-align:right">${dlt(ys-yb)}${isChanged(o)?`<br><button class="reset" type="button" data-a="r">Restablecer</button>`:''}</td></tr>`;
@@ -754,28 +764,28 @@ function tlCell(o,p,r,Ys,Ye,dist,NC){
   NC=NC||12;const span=Ye-Ys+1;
   const pos=(s,d)=>{const a=Math.max(s,Ys),b=Math.min(s+d-1,Ye);if(a>b)return null;return {l:(a-Ys)/span*100,w:(b-a+1)/span*100,cl:s<Ys,cr:s+d-1>Ye}};
   const pb=pos(r.s,r.d),ps=pos(p.s,p.d);let h=`<div class="tl" style="grid-template-columns:repeat(${NC},1fr)">`+'<span class="m"></span>'.repeat(NC);
-  if(p.a){const pa=pos(p.s-1,1);if(pa)h+=`<span class="bar-ant" style="left:${pa.l}%;width:${pa.w}%" title="Anticipo ${nf(p.a*100,1)}% · ${fmtM(o.m*p.a)} en ${mLabel(p.s-1)}">${pa.w>=6?nf(p.a*100,0)+'%':''}</span>`}
+  {const am=antOf(o,p);if(am>0){const pa=pos(p.s-1,1),pc=am/totObra(o)*100;if(pa)h+=`<span class="bar-ant" style="left:${pa.l}%;width:${pa.w}%" title="Anticipo ${fmtM(am)} (${nf(pc,1)}% del total) en ${mLabel(p.s-1)}">${pa.w>=6?nf(pc,0)+'%':''}</span>`}}
   if(pb)h+=`<span class="bar-base" style="left:${pb.l}%;width:${pb.w}%" title="${esc(refName())}: ${mLabel(r.s)} → ${mLabel(r.s+r.d-1)}"></span>`;
-  if(ps){const cv=esEdificio(o),per=cv?o.m*(1-p.a)/p.d:(dist[0]||0);h+=`<span class="bar-sim ${o.lock?'lock':''} ${!o.m?'zero':''}" style="left:${ps.l}%;width:${ps.w}%" title="${mLabel(p.s)} → ${mLabel(p.s+p.d-1)} · ${cv?'curva de inversión · promedio ':''}${fmtM(per)} por mes${p.a?' (sin el anticipo)':''}">${ps.w>=16&&span<=12?(cv?'curva · ':'')+fmtM(per)+'/mes':ps.w>=12?fmtM(o.m*(1-p.a)):''}</span>`;
+  if(ps){const cv=esEdificio(o)&&!o.esAnt,per=cv?obraOf(o,p)/p.d:(dist[0]||0);h+=`<span class="bar-sim ${o.lock?'lock':''} ${!o.m?'zero':''}" style="left:${ps.l}%;width:${ps.w}%" title="${mLabel(p.s)} → ${mLabel(p.s+p.d-1)} · ${cv?'curva de inversión · promedio ':''}${o.esAnt?'pago único de anticipo ':''}${fmtM(per)}${o.esAnt?'':' por mes'}${antOf(o,p)>0?' (sin el anticipo)':''}">${o.esAnt?(ps.w>=6?'Ant.':''):ps.w>=16&&span<=12?(cv?'curva · ':'')+fmtM(per)+'/mes':ps.w>=12?fmtM(obraOf(o,p)):''}</span>`;
     if(ps.cl)h+=`<span class="cont l" title="Viene de ${Math.floor(p.s/12)}">◂</span>`;if(ps.cr)h+=`<span class="cont r" title="Sigue en ${Math.floor((p.s+p.d-1)/12)}">▸</span>`}
   else{const after=p.s>Ye;h+=`<span class="cont ${after?'r':'l'}" style="top:17px">${after?'Pasa a '+Math.floor(p.s/12)+' ▸':'◂ Queda en '+Math.floor((p.s+p.d-1)/12)}</span>`}
   return h+'</div>';
 }
 function pushHist(){S.hist.push(JSON.stringify(S.changes));if(S.hist.length>100)S.hist.shift()}
-function setChange(o,s,d,a){
+function setChange(o,s,d,a){   // a: % de anticipo (0–1); undefined = mantener el actual; null = volver al de Planner
   if(o.lock)return;
-  const prev=S.changes[o.id]||{s:0,d:0};if(a===undefined)a=prev.a||0;
+  const prev=S.changes[o.id]||{s:0,d:0};if(a===undefined)a=prev.a!=null?prev.a:null;
   const c=clampChange(o,s,d,a);
-  if((prev.s||0)===c.s&&(prev.d||0)===c.d&&(prev.a||0)===(c.a||0)){render();return}
+  if((prev.s||0)===c.s&&(prev.d||0)===c.d&&(prev.a!=null?prev.a:null)===(c.a!=null?c.a:null)){render();return}
   pushHist();
-  if(!c.s&&!c.d&&!c.a)delete S.changes[o.id];else S.changes[o.id]=c;
+  if(!c.s&&!c.d&&c.a==null)delete S.changes[o.id];else S.changes[o.id]=c;
   S.dirty=true;render();
 }
 $('gt').addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b)return;const tr=b.closest('tr[data-id]');const o=OBRAS.find(x=>x.id===tr.dataset.id);const c=S.changes[o.id]||{s:0,d:0};
-  const a=b.dataset.a;if(a==='s-')setChange(o,(c.s||0)-1,c.d);else if(a==='s+')setChange(o,(c.s||0)+1,c.d);else if(a==='d-')setChange(o,c.s,(c.d||0)-1);else if(a==='d+')setChange(o,c.s,(c.d||0)+1);else if(a==='r')setChange(o,0,0,0)});
+  const a=b.dataset.a;if(a==='s-')setChange(o,(c.s||0)-1,c.d);else if(a==='s+')setChange(o,(c.s||0)+1,c.d);else if(a==='d-')setChange(o,c.s,(c.d||0)-1);else if(a==='d+')setChange(o,c.s,(c.d||0)+1);else if(a==='r')setChange(o,0,0,null)});
 $('gt').addEventListener('change',e=>{const i=e.target.closest('input[data-a]');if(!i)return;const o=OBRAS.find(x=>x.id===i.closest('tr').dataset.id);const c=S.changes[o.id]||{s:0,d:0};
-  const v=parseInt(String(i.value).replace('+',''),10);if(isNaN(v)){render();return}
   if(i.dataset.a==='a'){const pc=parseFloat(String(i.value).replace(',','.'));if(isNaN(pc)||pc<0||pc>100){render();return}setChange(o,c.s,c.d,pc/100);return}
+  const v=parseInt(String(i.value).replace('+',''),10);if(isNaN(v)){render();return}
   if(i.dataset.a==='s')setChange(o,v,c.d);else setChange(o,c.s,v-o.d0)});
 function undo(){if(!S.hist.length)return;S.changes=JSON.parse(S.hist.pop());S.dirty=true;render();toast('Cambio deshecho')}
 $('btnUndo').onclick=undo;
@@ -886,6 +896,7 @@ $('fileIn').addEventListener('change',async e=>{const f=e.target.files[0];e.targ
     if(dups.length)li.push(`${dups.length} Id repetidos: se usa la primera fila de cada uno`);
     if(pctFix)li.push(`${pctFix} avances venían como número entero (ej. 2) y se tomaron como porcentaje (2%)`);
     if(noBudget)li.push(`${noBudget} obras sin presupuesto: se muestran en 0`);
+    {const v=vincularAnticipos(out);if(v.vinc.length||v.sueltos.length)li.push(`${v.vinc.length} anticipos vinculados a su obra (se pagan el mes anterior al inicio)${v.sueltos.length?` · <b>${v.sueltos.length} sin obra vinculada</b> (se cargan como pago único en su fecha): ${esc(v.sueltos.slice(0,4).map(a=>a.p+' / '+a.o).join('; '))}${v.sueltos.length>4?'…':''}`:''}`)}
     {const py=out.filter(o=>normE(o.pr)==='paraguay');if(py.length)li.push(`${py.length} obras de Paraguay: van a la solapa Natania Paraguay, en dólares (columna “Presupuesto (U$D)”)${py.some(o=>!o.mu)?' · '+py.filter(o=>!o.mu).length+' sin monto en USD':''}`)}
     if(c.un<0)li.push('No hay columna “Unidad de Negocio”: se asigna Natania a todas');
     $('importList').innerHTML=li.map(x=>`<li>${x}</li>`).join('')||'<li>Sin observaciones.</li>';
@@ -916,9 +927,26 @@ function empOf(p){const al=S.emp.alias[p];if(al)return al==='__planner'?p:al;con
 function applyEmp(){OBRAS.forEach(o=>o.em=empOf(o.p))}
 // País de cada obra: Paraguay por provincia o por el país del listado de emprendimientos. Paraguay usa el monto en USD.
 const esPY=o=>{if(normE(o.pr)==='paraguay')return true;const e=S.emp.lista.find(x=>x.nombre===empOf(o.p));return !!(e&&normE(e.pais)==='paraguay')};
+// ---------- anticipos de Planner ----------
+// Cada edificio viene en dos tareas: "Anticipo ..." y "Obra ...". La de anticipo se vincula a su obra (mismo proyecto,
+// nombre parecido) y se paga en un único pago el mes anterior al inicio de la obra. Total = anticipo + obra.
+const esAntRow=o=>/\banticipos?\b/.test(normE(o.o));
+const STOPA=new Set('anticipo anticipos obra obras de del la el los las financiero pago para'.split(' '));
+const toksA=s=>new Set(normE(s).split(' ').filter(t=>t&&!STOPA.has(t)));
+function vincularAnticipos(list){
+  const ants=list.filter(esAntRow),obras=list.filter(o=>!esAntRow(o)),porId=new Map(),sueltos=[],vinc=[];
+  ants.forEach(a=>{let c=obras.filter(o=>o.p===a.p);const mismoTipo=c.filter(o=>normE(o.t)===normE(a.t));if(mismoTipo.length)c=mismoTipo;
+    let pick=null;if(c.length===1)pick=c[0];else if(c.length>1){const ta=toksA(a.o);
+      // primero: la única obra cuyo nombre contiene todas las palabras del anticipo (ej. "T1 Norte"); si no, la más parecida sin empates
+      const cont=c.filter(o=>{const to=toksA(o.o);return [...ta].every(t=>to.has(t))});if(cont.length===1)pick=cont[0];else if(!cont.length){const sc=c.map(o=>{const to=toksA(o.o);let k=0;ta.forEach(t=>{if(to.has(t))k++});return {o,k:k/Math.max(1,new Set([...ta,...to]).size)}}).sort((x,y)=>y.k-x.k);if(sc[0].k>0&&sc[0].k>sc[1].k)pick=sc[0].o}}
+    if(pick){const e=porId.get(pick.id)||{ant:0,de:[]};e.ant+=+a.m||0;e.de.push(a.o);porId.set(pick.id,e);vinc.push({a,o:pick})}else sueltos.push(a)});
+  const out=obras.map(o=>{const e=porId.get(o.id);return e?Object.assign({},o,{ant:e.ant,antDe:e.de}):o}).concat(sueltos.map(a=>Object.assign({},a,{esAnt:true,fin:a.ini})));
+  return {out,vinc,sueltos};
+}
 function rebuild(){const raw=S.raw||[];const py=raw.filter(esPY),ar=raw.filter(o=>!esPY(o));S.cnt={AR:ar.length,PY:py.length};
-  OBRAS=prep(PAIS==='PY'?py.map(o=>Object.assign({},o,{m:+o.mu||0})):ar);applyEmp()}
-function pickYear(){const cur=Math.floor(NOW/12),c={};OBRAS.forEach(o=>{for(let k=0;k<o.d0;k++){const y=Math.floor((o.s0+k)/12);c[y]=(c[y]||0)+o.m/o.d0}});const fut=Object.keys(c).map(Number).filter(y=>y>=cur&&c[y]>0).sort((x,z)=>x-z);S.year=Math.max(Y0,fut.length?fut[0]:cur)}
+  const v=vincularAnticipos(PAIS==='PY'?py.map(o=>Object.assign({},o,{m:+o.mu||0})):ar);S.antInfo=v;
+  OBRAS=prep(v.out);applyEmp()}
+function pickYear(){const cur=Math.floor(NOW/12),c={};OBRAS.forEach(o=>{for(let k=0;k<o.d0;k++){const y=Math.floor((o.s0+k)/12);c[y]=(c[y]||0)+totObra(o)/o.d0}});const fut=Object.keys(c).map(Number).filter(y=>y>=cur&&c[y]>0).sort((x,z)=>x-z);S.year=Math.max(Y0,fut.length?fut[0]:cur)}
 function paisUI(){$('tabAR').setAttribute('aria-selected',PAIS==='AR');$('tabPY').setAttribute('aria-selected',PAIS==='PY');
   $('tabAR').textContent='Natania Argentina'+(S.cnt?` (${S.cnt.AR})`:'');$('tabPY').textContent='Natania Paraguay'+(S.cnt?` (${S.cnt.PY})`:'');
   $('subtit').innerHTML=PAIS==='PY'?'Obras de Natania Paraguay en <b>dólares (USD)</b>, según la columna “Presupuesto (U$D)” de Planner. Mové obras en el tiempo y compará contra la base de Planner.'
@@ -935,7 +963,7 @@ document.querySelector('.paises').addEventListener('keydown',e=>{if(e.key==='Arr
 function setBase(list,info,soloPais){if(!soloPais){S.raw=list;S.baseInfo=info;rebuild()}S.loaded=true;paisUI();
   if(info&&!S.yearSet){S.yearSet=true;const cur=Math.floor(NOW/12),c={};OBRAS.forEach(o=>{for(let k=0;k<o.d0;k++){const y=Math.floor((o.s0+k)/12);c[y]=(c[y]||0)+o.m/o.d0}});const fut=Object.keys(c).map(Number).filter(y=>y>=cur&&c[y]>0).sort((x,z)=>x-z);S.year=Math.max(Y0,fut.length?fut[0]:cur)}
   $('sampleBanner').querySelector('b').textContent=info?'Datos cargados':'Sin obras cargadas';
-  $('dataSrc').textContent=info?`${OBRAS.length} obras de ${PAIS==='PY'?'Paraguay':'Argentina'} · ${info.archivo||'Excel'} · cargado ${new Date(info.cargado).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})} · ${PAIS==='PY'?'montos en USD':'actualización CAC '+CAC_BASE}.${PAIS==='PY'&&OBRAS.some(o=>!o.m)?' Hay obras sin monto en USD: volvé a cargar el Excel de Planner para traer esa columna.':''}`:(S.canWrite?'Todavía no hay una base de obras. Cargá el Excel exportado de Planner (Costos Obras) para empezar.':'Todavía no hay una base de obras. Un editor tiene que cargar el Excel de Planner.');
+  $('dataSrc').textContent=info?`${OBRAS.length} obras de ${PAIS==='PY'?'Paraguay':'Argentina'} · ${info.archivo||'Excel'} · cargado ${new Date(info.cargado).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})} · ${PAIS==='PY'?'montos en USD':'actualización CAC '+CAC_BASE}.${PAIS==='PY'&&OBRAS.some(o=>!o.m)?' Hay obras sin monto en USD: volvé a cargar el Excel de Planner para traer esa columna.':''}${S.antInfo&&(S.antInfo.vinc.length||S.antInfo.sueltos.length)?` Anticipos de Planner: ${S.antInfo.vinc.length} vinculados a su obra${S.antInfo.sueltos.length?`, ${S.antInfo.sueltos.length} sin obra vinculada (se muestran como pago único en su fecha)`:''}.`:''}`:(S.canWrite?'Todavía no hay una base de obras. Cargá el Excel exportado de Planner (Costos Obras) para empezar.':'Todavía no hay una base de obras. Un editor tiene que cargar el Excel de Planner.');
   buildFilters();render()}
 
 $('empIn').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
