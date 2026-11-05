@@ -90,7 +90,8 @@ body.fuera .plano text{display:none}
       <path class="lote" data-l="B" d="M40 170H210V250H40Z"/>
       <path class="lote" data-l="C" d="M40 250H210V330H40Z"/>
       <path class="lote" data-l="D" d="M210 40H356L380 64V190H210Z"/>
-      <text data-t="A" x="128" y="108">A</text><text data-t="B" x="125" y="210">B</text><text data-t="C" x="125" y="290">C</text><text data-t="D" x="292" y="118">D</text>
+      <path class="lote" data-l="E" d="M210 190H380V280H210Z"/>
+      <text data-t="A" x="128" y="108">A</text><text data-t="B" x="125" y="210">B</text><text data-t="C" x="125" y="290">C</text><text data-t="D" x="292" y="118">D</text><text data-t="E" x="295" y="235">E</text>
     </svg>
   </figure>
 </main>
@@ -115,9 +116,11 @@ const HERRAMIENTAS = [
   { letra: 'C', herr: 'licitaciones', nombre: 'Licitaciones', area: 'Abastecimiento Estratégico (Compras)',
     desc: 'Estado de cada licitación de Abastecimiento Estratégico: plazos, etapas, cambios de la semana e histórico.', url: '/licitaciones/' },
   { letra: 'D', herr: 'loteos', nombre: 'Tablero de Loteos Natania 360', area: 'Loteos Natania',
-    desc: 'Stock de lotes, infraestructura y avance de cada emprendimiento.', url: 'https://mmmsa221.github.io/Ecipsa-Loteos/', nota: 'Tiene su propio ingreso' }
+    desc: 'Stock de lotes, infraestructura y avance de cada emprendimiento.', url: 'https://mmmsa221.github.io/Ecipsa-Loteos/', nota: 'Tiene su propio ingreso' },
+  { letra: 'E', herr: 'entregas', nombre: 'Entregas de viviendas Natania', area: 'Producción y Comercial',
+    desc: 'Fechas de entrega planificadas de casas y departamentos por emprendimiento y etapa, con estilo de producto y razón para el estado.', url: '/entregas/' }
 ];
-const NOMBRES = { cabida: 'Análisis de Cabida', simulador: 'Simulación de Plan de Inversión', licitaciones: 'Estado de Licitaciones', loteos: 'Tablero de Loteos Natania 360' };
+const NOMBRES = { cabida: 'Análisis de Cabida', simulador: 'Simulación de Plan de Inversión', licitaciones: 'Estado de Licitaciones', loteos: 'Tablero de Loteos Natania 360', entregas: 'Entregas de viviendas Natania' };
 
 const $ = function (id) { return document.getElementById(id); };
 const esc = function (t) { return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
