@@ -76,17 +76,12 @@
 .nt-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .nt-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .nt-chart { position: relative; min-height: 260px; }
-.nt-axis { min-height: 28px; }
-.nt-scroll { position: relative; max-height: 600px; overflow: auto; border-top: 1px solid var(--color-border-line); }
-.nt-timeline { position: relative; min-height: 200px; }
 .nt-tip { position: absolute; pointer-events: none; z-index: 5; background: var(--hoja); border: 1px solid var(--linea); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.12); padding: 6px 10px; font-size: 12.5px; line-height: 1.45; max-width: 300px; }
 .nt-tip .t { color: var(--color-fg-muted); margin-bottom: 2px; }
 .nt-tip .r { display: flex; align-items: center; gap: 6px; }
 .nt-tip .r i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: none; }
 .nt-tip .r b { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; font-weight: 700; }
 .nt-search { min-height: 38px; font: inherit; color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 0 var(--cds-pad-sm); width: min(100%, 22rem); }
-.nt-tl-label { cursor: pointer; }
-.nt-tl-label:hover { text-decoration: underline; }
 
 /* Tablas */
 .nt-tablebox { max-height: 560px; overflow: auto; border: 1px solid var(--color-border-line); border-radius: 8px; }
@@ -259,7 +254,7 @@
 
   <nav class="nt-tabs" role="tablist" aria-label="Vistas">
     <button type="button" role="tab" id="t-calendario" data-tab="calendario" aria-controls="tab-calendario">Calendario</button>
-    <button type="button" role="tab" id="t-emprendimientos" data-tab="emprendimientos" aria-controls="tab-emprendimientos">Por emprendimiento</button>
+    <button type="button" role="tab" id="t-emprendimientos" data-tab="emprendimientos" aria-controls="tab-emprendimientos">Año a año</button>
     <button type="button" role="tab" id="t-cambios" data-tab="cambios" aria-controls="tab-cambios">Cambios entre cortes</button>
   </nav>
 
@@ -271,12 +266,11 @@
       <div class="nt-legend" data-draw="legend"></div>
       <div class="nt-chart" data-draw="quarters"></div>
     </div>
-    <div class="nt-card" id="linea-de-tiempo">
-      <h2>Línea de tiempo por emprendimiento y etapa</h2>
-      <p class="nt-note">Cada punto es una fecha de entrega; el tamaño indica cuántas viviendas vencen ese día y el color, la razón para el estado predominante. Un borde rojo marca fechas cumplidas con viviendas sin entregar. Tocá el nombre de un emprendimiento para filtrarlo. Los departamentos sin etapa se agrupan por torre o edificio.</p>
-      <div class="nt-axis" data-draw="tl-axis"></div>
-      <div class="nt-scroll"><div class="nt-timeline" data-draw="timeline"></div></div>
+    <div class="nt-card" id="reporte">
+      <h2>Reporte por emprendimiento y etapa</h2>
+      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por tipo y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas.</p>
     </div>
+    <div class="nt-rep" data-draw="reporte"></div>
     <div class="nt-card" id="detalle">
       <h2>Detalle de viviendas</h2>
       <p class="nt-note">Una fila por unidad. Ordená tocando el encabezado de cada columna. <span data-draw="table-count">—</span></p>
@@ -311,11 +305,6 @@
       </div>
       <div class="nt-mxbox"><div data-draw="matriz"></div></div>
     </div>
-    <div class="nt-card" id="reporte">
-      <h2>Reporte por emprendimiento y etapa</h2>
-      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por tipo y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas.</p>
-    </div>
-    <div class="nt-rep" data-draw="reporte"></div>
   </section>
 
   <!-- ═══ Cambios entre cortes ═══ -->
@@ -638,79 +627,6 @@
       tickText: (ks, x, w) => { const ys = ks.filter((k) => k % 4 === 0); const step = Math.ceil(ys.length / Math.max(1, Math.floor(w / 46))); return ys.filter((_, i) => i % step === 0).map((k) => ({ x: x(k), t: k / 4 })); },
       tipTitle: (k) => `T${(k % 4) + 1} ${Math.floor(k / 4)}`,
       todayKey: (x) => x(qKey(NT.today)) + x.bandwidth() * ((NT.today.getUTCMonth() % 3) / 3),
-    });
-  });
-
-  function groups(f) {
-    const dated = f.filter((r) => r._d);
-    const out = [];
-    d3.groups(dated, (r) => r.provincia, (r) => r.emprendimiento, (r) => r.etapa).sort((a, b) => a[0].localeCompare(b[0])).forEach(([prov, emps]) => {
-      out.push({ kind: 'prov', label: prov });
-      emps.sort((a, b) => NT.sortEmp(a[0], b[0])).forEach(([emp, etapas]) => {
-        etapas.sort((a, b) => d3.min(a[1], (r) => r._d) - d3.min(b[1], (r) => r._d) || a[0].localeCompare(b[0])).forEach(([etapa, rs]) => {
-          out.push({ kind: 'row', prov, emp, etapa, n: rs.length, pts: d3.groups(rs, (r) => r.fecha).map(([fecha, v]) => ({ fecha, d: v[0]._d, rows: v })) });
-        });
-      });
-    });
-    return out;
-  }
-  function domain(f) {
-    const e = d3.extent(f.filter((r) => r._d), (r) => r._d);
-    return [d3.utcYear.floor(d3.min([e[0], NT.today])), d3.utcYear.ceil(new Date(+d3.max([e[1], NT.today]) + 1))];
-  }
-  const MARGIN = { l: 24, r: 24 };
-  dash.draw('tl-axis', (el) => {
-    const f = NT.filtered();
-    el.replaceChildren();
-    if (!f || !f.some((r) => r._d)) return;
-    const W = width(el);
-    const x = d3.scaleUtc(domain(f), [MARGIN.l, W - MARGIN.r]);
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} 28`).attr('aria-hidden', 'true');
-    svg.append('g').selectAll('text').data(x.ticks(Math.max(2, Math.floor(W / 70)))).join('text').attr('x', (d) => x(d)).attr('y', 18).attr('text-anchor', 'middle')
-      .style('fill', 'var(--color-fg-muted)').style('font-size', '12px').text((d) => d.getUTCFullYear());
-    svg.append('text').attr('x', x(NT.today)).attr('y', 8).attr('text-anchor', 'middle').style('fill', '#FB7520').style('font-size', '10px').style('font-weight', 700).text('hoy');
-  });
-  dash.draw('timeline', (el) => {
-    const f = NT.filtered();
-    el.replaceChildren();
-    if (!f) return;
-    const gs = groups(f);
-    if (!gs.length) { el.textContent = 'No hay viviendas con fecha planificada para estos filtros.'; return; }
-    const W = width(el), RH = 46, PH = 32;
-    let yy = 6; gs.forEach((g) => { g.y = yy; yy += g.kind === 'prov' ? PH : RH; });
-    const H = yy + 6;
-    const x = d3.scaleUtc(domain(f), [MARGIN.l, W - MARGIN.r]);
-    const maxN = d3.max(gs.filter((g) => g.kind === 'row'), (g) => d3.max(g.pts, (p) => p.rows.length)) || 1;
-    const r = d3.scaleSqrt([0, maxN], [0, 10]);
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Línea de tiempo de entregas por emprendimiento y etapa');
-    svg.append('g').selectAll('line').data(x.ticks(Math.max(2, Math.floor(W / 70)))).join('line')
-      .attr('x1', (d) => x(d)).attr('x2', (d) => x(d)).attr('y1', 0).attr('y2', H).style('stroke', 'var(--cds-chart-grid)');
-    svg.append('line').attr('x1', x(NT.today)).attr('x2', x(NT.today)).attr('y1', 0).attr('y2', H).style('stroke', '#FB7520').attr('stroke-width', 2).attr('stroke-dasharray', '4 3');
-    const t = tip(el);
-    gs.forEach((g) => {
-      const G = svg.append('g').attr('transform', `translate(0,${g.y})`);
-      if (g.kind === 'prov') {
-        G.append('text').attr('x', MARGIN.l).attr('y', 20).style('fill', 'var(--color-fg)').style('font-weight', 800).style('font-size', '14px').text(g.label);
-        G.append('line').attr('x1', MARGIN.l).attr('x2', W - MARGIN.r).attr('y1', PH - 2).attr('y2', PH - 2).style('stroke', 'var(--color-border-line)');
-        return;
-      }
-      const lab = G.append('text').attr('class', 'nt-tl-label').attr('x', MARGIN.l).attr('y', 13).style('font-size', '12.5px');
-      lab.append('tspan').style('fill', 'var(--color-fg)').style('font-weight', 700).text(g.emp);
-      lab.append('tspan').style('fill', 'var(--color-fg-muted)').text('  ·  ' + g.etapa + '  ·  ' + NT.fmtN(g.n) + ' u.');
-      lab.on('click', () => dash.setParams({ prov: g.prov, emp: g.emp, etapa: null }));
-      const cy = 31, ext = d3.extent(g.pts, (p) => p.d);
-      G.append('line').attr('x1', x(ext[0])).attr('x2', x(ext[1])).attr('y1', cy).attr('y2', cy).style('stroke', 'var(--cds-chart-axis)').attr('stroke-width', 2).attr('stroke-linecap', 'round');
-      G.selectAll('circle').data(g.pts).join('circle').attr('cx', (p) => x(p.d)).attr('cy', cy).attr('r', (p) => Math.max(3, r(p.rows.length)))
-        .style('fill', (p) => NT.color(d3.rollups(p.rows, (v) => v.length, (q) => q.razon).sort((a, b) => b[1] - a[1])[0][0])).attr('fill-opacity', 0.9)
-        .style('stroke', (p) => p.rows.some(NT.isLate) ? 'var(--color-bad)' : 'var(--color-panel)').attr('stroke-width', (p) => p.rows.some(NT.isLate) ? 2 : 1)
-        .on('pointermove', (ev, p) => {
-          const lines = [];
-          d3.rollups(p.rows, (v) => v.length, (q) => q.razon).sort((a, b) => NT.RAZONES.indexOf(a[0]) - NT.RAZONES.indexOf(b[0])).forEach(([k, n]) => lines.push([k, n, NT.color(k)]));
-          d3.rollups(p.rows, (v) => v.length, (q) => q.estilo).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => lines.push(['Estilo: ' + k, n, null]));
-          d3.rollups(p.rows, (v) => v.length, (q) => q.tipo).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => lines.push(['Tipo: ' + k, n, null]));
-          fillTip(t, NT.fmtDate(p.d) + ' · ' + g.emp + ' · ' + g.etapa, lines); placeTip(t, el, ev);
-        })
-        .on('pointerleave', () => { t.hidden = true; });
     });
   });
 
