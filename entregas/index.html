@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Entregas de viviendas · Grupo ECIPSA</title>
-<meta name="description" content="Fechas de entrega planificadas de las viviendas de los emprendimientos Natania.">
+<meta name="description" content="Fechas de entrega planificadas de las viviendas de los emprendimientos Natania, por emprendimiento y año, y cambios entre actualizaciones.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M6 3h20l3 3v20l-3 3H6l-3-3V6z' fill='%2328283D'/><path d='M6 3h10v13H3V6z' fill='%23FB7520'/></svg>">
 <link rel="stylesheet" href="/eci.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -18,22 +18,130 @@
   --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 16px; --cds-gap-lg: 24px;
   --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 16px; --cds-pad-lg: 24px;
   --cds-radius: 12px; --cds-font-size-caption: 12.5px; --cds-font-size-body: 14.5px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px;
-  --cds-font-weight-medium: 600;
   --cds-chart-grid: rgba(40,40,61,.08); --cds-chart-axis: rgba(40,40,61,.35); --cds-chart-muted: #c3c3c8;
   --cds-surface-popover: var(--hoja); --cds-border: var(--linea); --cds-shadow-popover: 0 4px 12px rgba(0,0,0,.12);
-  --cds-text-secondary: var(--suave); --cds-dur-slow: 250ms;
-  --font-anthropic-sans: var(--cuerpo); --font-anthropic-serif: var(--tit);
   --s1: #28283D; --s2: #3E7CB1; --s3: #9B08BF; --s4: #2E8B57; --s5: #8A8A93; --s6: #C9530A;
+  --nt-orange: #FB7520; --nt-orange-txt: #B84F0B; --nt-heat: 251,117,32;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --cds-chart-grid: rgba(242,242,245,.08); --cds-chart-axis: rgba(242,242,245,.35); --cds-chart-muted: #5d5d72;
-  --s1: #C9C9E6; --s2: #7FB3E0; --s3: #D07BE8; --s4: #6CCB94; --s5: #9a9aab; --s6: #F0A060; } }
+  --s1: #C9C9E6; --s2: #7FB3E0; --s3: #D07BE8; --s4: #6CCB94; --s5: #9a9aab; --s6: #F0A060; --nt-orange-txt: #FFA466; } }
 :root[data-theme="dark"] {
   --cds-chart-grid: rgba(242,242,245,.08); --cds-chart-axis: rgba(242,242,245,.35); --cds-chart-muted: #5d5d72;
-  --s1: #C9C9E6; --s2: #7FB3E0; --s3: #D07BE8; --s4: #6CCB94; --s5: #9a9aab; --s6: #F0A060; }
+  --s1: #C9C9E6; --s2: #7FB3E0; --s3: #D07BE8; --s4: #6CCB94; --s5: #9a9aab; --s6: #F0A060; --nt-orange-txt: #FFA466; }
+
 #dash-root { padding: 24px max(16px, env(safe-area-inset-left, 0px)) 48px max(16px, env(safe-area-inset-right, 0px)); }
-.nt-head h1 { font-weight: 800 !important; letter-spacing: -.01em; color: var(--tinta); line-height: 1.15; }
-.nt-volver { margin-left: auto; font-size: 14px; }
+.nt { display: flex; flex-direction: column; gap: var(--cds-gap-lg); font-family: var(--cuerpo); max-width: 1280px; margin-inline: auto; color: var(--color-fg); }
+.nt-head { display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+.nt-eyebrow { font-size: var(--cds-font-size-caption); letter-spacing: .08em; text-transform: uppercase; color: var(--nt-orange-txt); font-weight: 700; }
+.nt-head h1 { margin: 0; font-family: var(--tit); font-weight: 800; font-size: clamp(28px, 4vw, 38px); letter-spacing: -.01em; color: var(--tinta); line-height: 1.15; text-wrap: balance; }
+.nt-lead { margin: 0; color: var(--color-fg-muted); max-width: 75ch; line-height: 1.55; font-size: 15px; }
+.nt-lead b { color: var(--color-fg); font-weight: 700; }
+
+.nt-filters { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); align-items: flex-end; padding: var(--cds-pad-md); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.nt-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 10rem; }
+.nt-field label, .nt-check { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.nt select { min-height: 38px; max-width: 100%; font: inherit; font-size: 14px; color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 0 var(--cds-pad-sm); }
+.nt-check { display: flex; align-items: center; gap: 6px; min-height: 38px; flex: 1 1 14rem; cursor: pointer; }
+.nt-check input { accent-color: var(--nt-orange); width: 16px; height: 16px; }
+.nt-btn { min-height: 38px; padding: 0 var(--cds-pad-md); font: inherit; font-size: 14px; color: var(--color-fg); background: transparent; border: 1px solid var(--color-border-line); border-radius: 8px; cursor: pointer; }
+.nt-btn:hover { border-color: var(--nt-orange); }
+.nt :is(select, button, input):focus-visible { outline: 3px solid var(--nt-orange); outline-offset: 2px; }
+
+.nt-cortes { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); align-items: center; font-size: 14px; color: var(--color-fg-muted); }
+.nt-cortes b { color: var(--color-fg); }
+.nt-cortes select { min-width: 12rem; }
+
+.nt-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: var(--cds-gap-md); }
+.nt-kpi { padding: var(--cds-pad-md) var(--cds-pad-lg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); display: flex; flex-direction: column; gap: 4px; }
+.nt-kpi span { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.nt-kpi strong { font-family: var(--tit); font-weight: 800; font-size: 30px; font-variant-numeric: tabular-nums; line-height: 1.15; color: var(--tinta); }
+.nt-kpi small { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-height: 1em; }
+.nt-kpi.is-alert { border-top: 3px solid var(--color-bad); }
+.nt-kpi.is-alert strong { color: var(--color-bad); }
+.nt-kpi.is-soon { border-top: 3px solid var(--nt-orange); }
+.nt-kpi.is-ok { border-top: 3px solid var(--color-ok); }
+
+.nt-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--tinta); overflow-x: auto; }
+.nt-tabs button { all: unset; cursor: pointer; padding: 10px 16px; font-family: var(--tit); font-weight: 700; font-size: 15px; color: var(--color-fg-muted); border-radius: 8px 8px 0 0; white-space: nowrap; }
+.nt-tabs button[aria-selected="true"] { background: var(--tinta); color: var(--hoja); }
+.nt-tabs button:focus-visible { outline: 3px solid var(--nt-orange); outline-offset: -3px; }
+.nt-tab { display: flex; flex-direction: column; gap: var(--cds-gap-lg); }
+
+.nt-card { position: relative; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+.nt-card h2 { margin: 0; font-family: var(--tit); font-size: var(--cds-font-size-heading); font-weight: 800; color: var(--tinta); }
+.nt-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.5; max-width: 110ch; }
+.nt-empty { padding: var(--cds-pad-md); font-size: 14px; color: var(--color-fg-muted); background: var(--trama); border-radius: 8px; }
+.nt-legend { display: flex; flex-wrap: wrap; gap: 4px var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-height: 18px; }
+.nt-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.nt-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.nt-chart { position: relative; min-height: 260px; }
+.nt-tip { position: absolute; pointer-events: none; z-index: 5; background: var(--hoja); border: 1px solid var(--linea); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.12); padding: 6px 10px; font-size: 12.5px; line-height: 1.45; max-width: 300px; }
+.nt-tip .t { color: var(--color-fg-muted); margin-bottom: 2px; }
+.nt-tip .r { display: flex; align-items: center; gap: 6px; }
+.nt-tip .r i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: none; }
+.nt-tip .r b { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; font-weight: 700; }
+.nt-search { min-height: 38px; font: inherit; color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 0 var(--cds-pad-sm); width: min(100%, 22rem); }
+
+/* Tablas */
+.nt-tablebox { max-height: 560px; overflow: auto; border: 1px solid var(--color-border-line); border-radius: 8px; }
+.nt-table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+.nt-table th { position: sticky; top: 0; background: var(--color-panel); text-align: left; padding: 0; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; z-index: 1; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--color-fg-muted); }
+.nt-table th button, .nt-table th > span { all: unset; display: block; cursor: pointer; padding: 9px 10px; font-weight: 700; }
+.nt-table th > span { cursor: default; }
+.nt-table th[aria-sort="ascending"] button::after { content: " ↑"; color: var(--nt-orange); }
+.nt-table th[aria-sort="descending"] button::after { content: " ↓"; color: var(--nt-orange); }
+.nt-table td { padding: 8px 10px; border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+.nt-table .num { text-align: right; }
+.nt-pill { display: inline-block; padding: 1px 8px; border-radius: 8px; font-weight: 700; font-size: 11px; white-space: nowrap; border: 1px solid currentColor; }
+.nt-late { color: var(--color-bad); font-weight: 700; }
+.nt-arrow { color: var(--color-fg-muted); padding: 0 4px; }
+
+/* Reporte por emprendimiento (estilo planilla) */
+.nt-rep { display: flex; flex-direction: column; gap: var(--cds-gap-md); }
+.nt-rep-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 20px 20px 8px; min-width: 0; }
+.nt-rep-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
+.nt-rep-head h3 { margin: 0; font-family: var(--tit); font-weight: 800; font-size: 19px; color: var(--tinta); }
+.nt-rep-head .prov { font-family: var(--cuerpo); font-weight: 400; font-size: 13px; color: var(--color-fg-muted); margin-left: 8px; }
+.nt-badge { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 4px 12px; border-radius: 8px; color: var(--nt-orange-txt); background: rgba(var(--nt-heat), .12); white-space: nowrap; }
+.nt-rep-wrap { overflow-x: auto; }
+.nt-rep-t { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.nt-rep-t th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--color-fg-muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.nt-rep-t td { padding: 9px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.nt-rep-t tr:last-child td { border-bottom: 0; }
+.nt-rep-t .num { text-align: right; }
+.nt-rep-t .sep { border-left: 2px solid var(--nt-orange); }
+.nt-rep-t .tot { font-weight: 800; color: var(--tinta); }
+.nt-rep-t .mut { color: var(--color-fg-muted); }
+.nt-rep-t .sinf { color: var(--nt-orange-txt); }
+.nt-rep-t tfoot td { font-weight: 700; border-top: 1px solid var(--linea-fuerte); }
+.nt-was { display: block; font-size: 11px; color: var(--color-fg-muted); }
+.nt-d { display: block; font-size: 11px; font-weight: 700; }
+.nt-d.up { color: var(--color-ok); } .nt-d.down { color: var(--color-bad); }
+
+/* Matriz año a año */
+.nt-seg { align-self: flex-start; display: inline-flex; border: 1px solid var(--color-border-line); border-radius: 8px; overflow: hidden; }
+.nt-seg button { all: unset; cursor: pointer; padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--color-fg-muted); }
+.nt-seg button[aria-pressed="true"] { background: var(--tinta); color: var(--hoja); }
+.nt-seg button:focus-visible { outline: 3px solid var(--nt-orange); outline-offset: -3px; }
+.nt-mx { border-collapse: separate; border-spacing: 0; font-size: 13px; font-variant-numeric: tabular-nums; width: 100%; }
+.nt-mx th, .nt-mx td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.nt-mx thead th { position: sticky; top: 0; background: var(--color-panel); z-index: 2; font-size: 12px; color: var(--color-fg-muted); font-weight: 700; }
+.nt-mx thead th.past { color: var(--color-bad); }
+.nt-mx th.emp, .nt-mx td.emp { text-align: left; position: sticky; left: 0; background: var(--color-panel); z-index: 1; min-width: 14rem; max-width: 22rem; white-space: normal; }
+.nt-mx thead th.emp { z-index: 3; }
+.nt-mx td.emp { cursor: pointer; font-weight: 600; }
+.nt-mx td.emp:hover { text-decoration: underline; }
+.nt-mx tr.prov td { text-align: left; font-family: var(--tit); font-weight: 800; color: var(--tinta); background: var(--trama); position: sticky; left: 0; }
+.nt-mx td.c { min-width: 3.2rem; }
+.nt-mx td.c.zero { color: var(--color-fg-muted); opacity: .45; }
+.nt-mx .tc { font-weight: 800; border-left: 2px solid var(--nt-orange); }
+.nt-mx tfoot td { font-weight: 800; border-top: 2px solid var(--tinta); background: var(--color-panel); position: sticky; bottom: 0; }
+.nt-mx tfoot td.emp { z-index: 2; }
+.nt-mxbox { max-height: 640px; overflow: auto; border: 1px solid var(--color-border-line); border-radius: 8px; }
+
+@media (max-width: 640px) { .nt-hide-sm { display: none; } .nt-mx th.emp, .nt-mx td.emp { min-width: 8.5rem; } .nt-rep-card { padding: 16px 12px 4px; } }
+@media (prefers-reduced-motion: no-preference) { .nt-tab { animation: ntIn 200ms ease-out; } @keyframes ntIn { from { opacity: .4; } to { opacity: 1; } } }
 </style>
 </head>
 <body>
@@ -45,27 +153,63 @@
   </div>
 </header>
 <script src="d3.min.js"></script>
-<script src="datos.js"></script>
 <script>
-/* Reemplazo mínimo de la API del tablero: lee window.DATOS (datos.js) y calcula todo en el navegador. */
+/* Datos y estado. Cada export de Dynamics es un "corte" en historial/AAAA-MM-DD.json; historial/index.json los lista
+   con un resumen para la evolución. Se carga el último corte y, si se elige, uno anterior para comparar. */
 (function () {
-  const D = window.DATOS || {};
-  const DEF = { prov: '', emp: '', etapa: '', tipo: '', estilo: '', razon: '', hist: false };
+  const DEF = { prov: '', emp: '', etapa: '', tipo: '', estilo: '', razon: '', avance: '', hist: false, cmp: '', modo: 'comp', tab: 'calendario' };
+  const KEEP = ['cmp', 'modo', 'tab'];
   let params = { ...DEF };
+  const S = { idx: null, cur: null, prev: null, prevCorte: null, err: null };
   const listeners = [], draws = {};
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  function runDraw(name) { document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => { try { draws[name](el); } catch (e) { console.error(name, e); } }); }
+  function expand(j) {
+    const { cols, dic, rows } = j;
+    return rows.map((r) => {
+      const o = {};
+      cols.forEach((c, i) => { o[c] = dic[c] ? dic[c][r[i]] : r[i]; });
+      o._d = o.fecha ? new Date(o.fecha + 'T00:00:00Z') : null;
+      return o;
+    });
+  }
+  const get = (c) => fetch('historial/' + c + '.json', { cache: 'no-cache' }).then((r) => { if (!r.ok) throw new Error('No se pudo leer el corte ' + c); return r.json(); }).then(expand);
+  function runDraw(name) {
+    document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => {
+      if (el.closest('[hidden]')) return;
+      try { draws[name](el); } catch (e) { console.error(name, e); }
+    });
+  }
   function fire() { listeners.forEach((f) => f()); Object.keys(draws).forEach(runDraw); }
+  function loadPrev() {
+    const c = params.cmp;
+    if (!c) { S.prev = null; S.prevCorte = null; return; }
+    if (c === S.prevCorte) return;
+    S.prevCorte = c; S.prev = null;
+    get(c).then((rows) => { if (params.cmp === c) { S.prev = rows; fire(); } }).catch((e) => { S.err = e; fire(); });
+  }
+  fetch('historial/index.json', { cache: 'no-cache' }).then((r) => r.json()).then(async (idx) => {
+    S.idx = idx;
+    const cs = idx.cortes;
+    S.cur = await get(cs[cs.length - 1].corte);
+    if (cs.length > 1) params.cmp = cs[cs.length - 2].corte;
+    loadPrev(); fire();
+  }).catch((e) => { S.err = e; fire(); });
+
   window.dash = {
-    data: (id) => ({ status: D[id] ? 'ok' : 'error', data: D[id] || [], meta: [] }),
+    data: (id) => {
+      if (S.err) return { status: 'error', data: [], message: String(S.err.message || S.err) };
+      if (id === 'viviendas') return S.cur ? { status: 'ok', data: S.cur } : { status: 'loading', data: [] };
+      if (id === 'comparacion') return !params.cmp ? { status: 'none', data: [] } : S.prev ? { status: 'ok', data: S.prev, corte: params.cmp } : { status: 'loading', data: [] };
+      if (id === 'historial') return S.idx ? { status: 'ok', data: S.idx.cortes } : { status: 'loading', data: [] };
+      return { status: 'missing', data: [] };
+    },
     onData: (fn) => { listeners.push(fn); fn(); },
     draw: (name, fn) => { if (fn) draws[name] = fn; if (draws[name] && document.readyState !== 'loading') runDraw(name); },
     params: () => ({ ...params }),
-    setParams: (p) => { Object.keys(p).forEach((k) => { params[k] = p[k] == null ? DEF[k] : p[k]; }); fire(); },
-    resetParams: () => { params = { ...DEF }; fire(); },
+    setParams: (p) => { Object.keys(p).forEach((k) => { params[k] = p[k] == null ? DEF[k] : p[k]; }); if ('cmp' in p) loadPrev(); fire(); },
+    resetParams: () => { const keep = {}; KEEP.forEach((k) => { keep[k] = params[k]; }); params = { ...DEF, ...keep }; fire(); },
     get colors() { return ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6', '--s1', '--s2'].map(css); },
   };
-  window.dashFire = fire;
   let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(fire, 150); });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', fire);
   document.addEventListener('DOMContentLoaded', fire);
@@ -73,196 +217,264 @@
   document.getElementById('bSalir').addEventListener('click', () => ECI.salir());
 })();
 </script>
-<div id="dash-root">
-<style>
-  .nt { --nt-orange: #FB7520; display: flex; flex-direction: column; gap: var(--cds-gap-lg); font-family: "Open Sans", var(--font-anthropic-sans); max-width: 1280px; margin-inline: auto; }
-  .nt-head { display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
-  .nt-eyebrow { font-size: var(--cds-font-size-caption); letter-spacing: .08em; text-transform: uppercase; color: var(--color-fg-muted); font-weight: 600; }
-  .nt-eyebrow i { font-style: normal; color: var(--nt-orange); }
-  .nt-head h1 { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); text-wrap: balance; }
-  .nt-lead { margin: 0; color: var(--color-fg-muted); max-width: 70ch; line-height: 1.5; }
-  .nt-lead b { color: var(--color-fg); font-weight: 600; }
-  .nt-filters { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); align-items: flex-end; padding: var(--cds-pad-md); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
-  .nt-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 10rem; }
-  .nt-field label, .nt-check { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
-  .nt-field select { min-height: 36px; max-width: 100%; font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 0 var(--cds-pad-sm); }
-  .nt-check { display: flex; align-items: center; gap: 6px; min-height: 36px; flex: 1 1 14rem; cursor: pointer; }
-  .nt-check input { accent-color: var(--nt-orange); width: 16px; height: 16px; }
-  .nt-btn { min-height: 36px; padding: 0 var(--cds-pad-md); font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: transparent; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); cursor: pointer; }
-  .nt-btn:hover { border-color: var(--nt-orange); }
-  .nt :is(select, button, input, th button):focus-visible { outline: 3px solid var(--nt-orange); outline-offset: 2px; }
-  .nt-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: var(--cds-gap-md); }
-  .nt-kpi { padding: var(--cds-pad-md) var(--cds-pad-lg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); display: flex; flex-direction: column; gap: 4px; }
-  .nt-kpi span { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
-  .nt-kpi strong { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; line-height: 1.2; }
-  .nt-kpi.is-alert strong { color: var(--color-bad); }
-  .nt-kpi.is-alert { border-top: 3px solid var(--color-bad); }
-  .nt-kpi.is-soon { border-top: 3px solid var(--nt-orange); }
-  .nt-card { position: relative; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
-  .nt-card h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
-  .nt-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.5; }
-  .nt-legend { display: flex; flex-wrap: wrap; gap: 4px var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-height: 18px; }
-  .nt-legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .nt-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-  .nt-chart { position: relative; min-height: 260px; }
-  .nt-axis { min-height: 28px; }
-  .nt-scroll { position: relative; max-height: 600px; overflow: auto; border-top: 1px solid var(--color-border-line); }
-  .nt-timeline { position: relative; min-height: 200px; }
-  .nt-tip { position: absolute; pointer-events: none; z-index: 5; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); line-height: 1.45; max-width: 280px; }
-  .nt-tip .t { color: var(--cds-text-secondary); margin-bottom: 2px; }
-  .nt-tip .r { display: flex; align-items: center; gap: 6px; }
-  .nt-tip .r i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: none; }
-  .nt-tip .r b { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; font-weight: 600; }
-  .nt-search { min-height: 36px; font: inherit; color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 0 var(--cds-pad-sm); width: min(100%, 22rem); }
-  .nt-tablebox { max-height: 520px; overflow: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
-  .nt-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
-  .nt-table th { position: sticky; top: 0; background: var(--color-panel); text-align: left; padding: 0; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; z-index: 1; }
-  .nt-table th button { all: unset; display: block; cursor: pointer; padding: 8px 10px; font-weight: 600; color: var(--color-fg); }
-  .nt-table th[aria-sort="ascending"] button::after { content: " ↑"; color: var(--nt-orange); }
-  .nt-table th[aria-sort="descending"] button::after { content: " ↓"; color: var(--nt-orange); }
-  .nt-table td { padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
-  .nt-table td:nth-child(3) { min-width: 16rem; }
-  .nt-pill { display: inline-block; padding: 1px 8px; border-radius: 8px; font-weight: 600; font-size: 11px; white-space: nowrap; border: 1px solid currentColor; }
-  .nt-late { color: var(--color-bad); font-weight: 600; }
-  .nt-tl-label { cursor: pointer; }
-  .nt-tl-label:hover { text-decoration: underline; }
-  [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
-  @media (max-width: 640px) { .nt-hide-sm { display: none; } }
-</style>
 
+<div id="dash-root">
 <div class="nt" id="top">
   <header class="nt-head">
-    <div class="nt-eyebrow">Natania · Export de stock de Dynamics del <span id="corte">—</span></div>
+    <div class="nt-eyebrow">Grupo ECIPSA · Natania</div>
     <h1>Entregas de viviendas Natania</h1>
-    <p class="nt-lead"><b data-draw="lead-n" data-source="viviendas">—</b> viviendas en la vista. La próxima fecha de entrega planificada es <b data-draw="lead-next" data-source="viviendas">—</b>, en <b data-draw="lead-next-emp" data-source="viviendas">—</b>. <b data-draw="lead-late" data-source="viviendas">—</b> unidades tienen la fecha ya cumplida y siguen sin entregar.</p>
+    <p class="nt-lead"><b data-draw="lead-n">—</b> viviendas en la vista. La próxima fecha de entrega planificada es <b data-draw="lead-next">—</b>, en <b data-draw="lead-next-emp">—</b>. <b data-draw="lead-late">—</b> unidades tienen la fecha ya cumplida y siguen sin entregar.</p>
   </header>
 
+  <div class="nt-cortes" id="cortes">
+    <span>Datos al <b data-draw="corte-actual">—</b> (export de stock de Dynamics)</span>
+    <label for="f-cmp">Comparar con el corte</label>
+    <select id="f-cmp" data-draw="sel-cmp"></select>
+    <span data-draw="cortes-n"></span>
+  </div>
+
   <section class="nt-filters" id="filtros" aria-label="Filtros">
-    <div class="nt-field"><label for="f-prov">Provincia</label><select id="f-prov" data-draw="sel-prov" data-source="viviendas"></select></div>
-    <div class="nt-field"><label for="f-emp">Emprendimiento</label><select id="f-emp" data-draw="sel-emp" data-source="viviendas"></select></div>
-    <div class="nt-field"><label for="f-etapa">Etapa</label><select id="f-etapa" data-draw="sel-etapa" data-source="viviendas"></select></div>
-    <div class="nt-field"><label for="f-tipo">Tipo de vivienda</label><select id="f-tipo" data-draw="sel-tipo" data-source="viviendas"></select></div>
-    <div class="nt-field"><label for="f-estilo">Estilo de producto</label><select id="f-estilo" data-draw="sel-estilo" data-source="viviendas"></select></div>
-    <div class="nt-field"><label for="f-razon">Razón para el estado</label><select id="f-razon" data-draw="sel-razon" data-source="viviendas"></select></div>
+    <div class="nt-field"><label for="f-prov">Provincia</label><select id="f-prov" data-draw="sel-prov"></select></div>
+    <div class="nt-field"><label for="f-emp">Emprendimiento</label><select id="f-emp" data-draw="sel-emp"></select></div>
+    <div class="nt-field"><label for="f-etapa">Etapa</label><select id="f-etapa" data-draw="sel-etapa"></select></div>
+    <div class="nt-field"><label for="f-tipo">Tipo de vivienda</label><select id="f-tipo" data-draw="sel-tipo"></select></div>
+    <div class="nt-field"><label for="f-estilo">Estilo de producto</label><select id="f-estilo" data-draw="sel-estilo"></select></div>
+    <div class="nt-field"><label for="f-razon">Razón para el estado</label><select id="f-razon" data-draw="sel-razon"></select></div>
+    <div class="nt-field"><label for="f-avance">Avance de obra</label><select id="f-avance" data-draw="sel-avance"></select></div>
     <label class="nt-check" for="f-hist"><input type="checkbox" id="f-hist"> Incluir entregadas y escrituradas</label>
     <button type="button" class="nt-btn" id="f-reset">Limpiar filtros</button>
   </section>
 
   <section class="nt-kpis" id="resumen" aria-label="Resumen">
-    <div class="nt-kpi"><span>Viviendas en la vista</span><strong data-draw="k-total" data-source="viviendas">—</strong></div>
-    <div class="nt-kpi is-alert"><span>Fecha cumplida, sin entregar</span><strong data-draw="k-late" data-source="viviendas">—</strong></div>
-    <div class="nt-kpi is-soon"><span>Entregas en los próximos 12 meses</span><strong data-draw="k-12m" data-source="viviendas">—</strong></div>
-    <div class="nt-kpi"><span>Sin fecha planificada</span><strong data-draw="k-nodate" data-source="viviendas">—</strong></div>
+    <div class="nt-kpi"><span>Viviendas en la vista</span><strong data-draw="k-total">—</strong><small data-draw="k-total-d"></small></div>
+    <div class="nt-kpi is-alert"><span>Fecha cumplida, sin entregar</span><strong data-draw="k-late">—</strong><small data-draw="k-late-d"></small></div>
+    <div class="nt-kpi is-soon"><span>Entregas en los próximos 12 meses</span><strong data-draw="k-12m">—</strong><small data-draw="k-12m-d"></small></div>
+    <div class="nt-kpi"><span>Sin fecha planificada</span><strong data-draw="k-nodate">—</strong><small data-draw="k-nodate-d"></small></div>
   </section>
 
-  <section class="nt-card" id="por-trimestre">
-    <h2>Unidades por trimestre de entrega</h2>
-    <p class="nt-note">Fecha Entrega Planificada (técnica), agrupada por trimestre y apilada por razón para el estado. La línea naranja marca hoy.</p>
-    <div class="nt-legend" data-draw="legend" data-source="viviendas"></div>
-    <div class="nt-chart" data-draw="quarters" data-source="viviendas"></div>
+  <nav class="nt-tabs" role="tablist" aria-label="Vistas">
+    <button type="button" role="tab" id="t-calendario" data-tab="calendario" aria-controls="tab-calendario">Calendario</button>
+    <button type="button" role="tab" id="t-emprendimientos" data-tab="emprendimientos" aria-controls="tab-emprendimientos">Año a año</button>
+    <button type="button" role="tab" id="t-cambios" data-tab="cambios" aria-controls="tab-cambios">Cambios entre cortes</button>
+  </nav>
+
+  <!-- ═══ Calendario ═══ -->
+  <section class="nt-tab" id="tab-calendario" role="tabpanel" aria-labelledby="t-calendario">
+    <div class="nt-card" id="por-trimestre">
+      <h2>Unidades por trimestre de entrega</h2>
+      <p class="nt-note">Fecha Entrega Planificada (técnica), agrupada por trimestre y apilada por razón para el estado. La línea naranja marca hoy.</p>
+      <div class="nt-legend" data-draw="legend"></div>
+      <div class="nt-chart" data-draw="quarters"></div>
+    </div>
+    <div class="nt-card" id="reporte">
+      <h2>Reporte por emprendimiento y etapa</h2>
+      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por tipo y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas.</p>
+    </div>
+    <div class="nt-rep" data-draw="reporte"></div>
+    <div class="nt-card" id="detalle">
+      <h2>Detalle de viviendas</h2>
+      <p class="nt-note">Una fila por unidad. Ordená tocando el encabezado de cada columna. <span data-draw="table-count">—</span></p>
+      <input type="search" id="t-search" class="nt-search" placeholder="Buscar unidad, emprendimiento, etapa…" aria-label="Buscar en el detalle">
+      <div class="nt-tablebox">
+        <table class="nt-table" id="t-detalle">
+          <thead><tr>
+            <th data-field="fecha" aria-sort="ascending"><button type="button" data-sort="fecha">Fecha entrega</button></th>
+            <th data-field="emprendimiento"><button type="button" data-sort="emprendimiento">Emprendimiento</button></th>
+            <th data-field="nombre"><button type="button" data-sort="nombre">Unidad</button></th>
+            <th data-field="etapa"><button type="button" data-sort="etapa">Etapa</button></th>
+            <th data-field="tipo" class="nt-hide-sm"><button type="button" data-sort="tipo">Tipo</button></th>
+            <th data-field="estilo"><button type="button" data-sort="estilo">Estilo</button></th>
+            <th data-field="razon"><button type="button" data-sort="razon">Razón para el estado</button></th>
+            <th data-field="avance" class="nt-hide-sm"><button type="button" data-sort="avance">Avance de obra</button></th>
+            <th data-field="provincia" class="nt-hide-sm"><button type="button" data-sort="provincia">Provincia</button></th>
+          </tr></thead>
+          <tbody data-draw="table"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
-  <section class="nt-card" id="linea-de-tiempo">
-    <h2>Línea de tiempo por emprendimiento y etapa</h2>
-    <p class="nt-note">Cada punto es una fecha de entrega; el tamaño indica cuántas viviendas vencen ese día y el color, la razón para el estado predominante. Pasá el cursor para ver el detalle por estado, estilo y tipo. Tocá el nombre de un emprendimiento para filtrarlo. Los departamentos sin etapa se agrupan por torre o edificio.</p>
-    <div class="nt-axis" data-draw="tl-axis" data-source="viviendas"></div>
-    <div class="nt-scroll"><div class="nt-timeline" data-draw="timeline" data-source="viviendas"></div></div>
+  <!-- ═══ Por emprendimiento ═══ -->
+  <section class="nt-tab" id="tab-emprendimientos" role="tabpanel" aria-labelledby="t-emprendimientos" hidden>
+    <div class="nt-card" id="anio-a-anio">
+      <h2>Viviendas por año de entrega</h2>
+      <p class="nt-note">Cuántas viviendas hay que entregar cada año en cada emprendimiento, según la fecha de entrega planificada. <b>Comprometidas</b> son las adjudicadas y reservadas (SAAT, canje, directorio); <b>todas las pendientes</b> suma además disponibles y no disponibles. Los años en rojo ya pasaron. Si hay un corte para comparar, debajo de cada número se ve cuánto cambió. Tocá un emprendimiento para filtrarlo.</p>
+      <div class="nt-seg" role="group" aria-label="Qué viviendas contar">
+        <button type="button" data-modo="comp">Comprometidas</button>
+        <button type="button" data-modo="todas">Todas las pendientes</button>
+      </div>
+      <div class="nt-mxbox"><div data-draw="matriz"></div></div>
+    </div>
   </section>
 
-  <section class="nt-card" id="detalle">
-    <h2>Detalle de viviendas</h2>
-    <p class="nt-note">Una fila por unidad. Ordená tocando el encabezado de cada columna. <span data-draw="table-count" data-source="viviendas">—</span></p>
-    <input type="search" id="t-search" class="nt-search" placeholder="Buscar unidad, emprendimiento, etapa…" aria-label="Buscar en el detalle">
-    <div class="nt-tablebox">
-      <table class="nt-table" data-source="viviendas" data-row-key="id">
-        <thead><tr>
-          <th data-field="fecha" aria-sort="ascending"><button type="button" data-sort="fecha">Fecha entrega</button></th>
-          <th data-field="emprendimiento"><button type="button" data-sort="emprendimiento">Emprendimiento</button></th>
-          <th data-field="nombre"><button type="button" data-sort="nombre">Unidad</button></th>
-          <th data-field="etapa"><button type="button" data-sort="etapa">Etapa</button></th>
-          <th data-field="tipo" class="nt-hide-sm"><button type="button" data-sort="tipo">Tipo</button></th>
-          <th data-field="estilo"><button type="button" data-sort="estilo">Estilo</button></th>
-          <th data-field="razon"><button type="button" data-sort="razon">Razón para el estado</button></th>
-          <th data-field="avance" class="nt-hide-sm"><button type="button" data-sort="avance">Avance de obra</button></th>
-          <th data-field="provincia" class="nt-hide-sm"><button type="button" data-sort="provincia">Provincia</button></th>
-        </tr></thead>
-        <tbody data-draw="table"></tbody>
-      </table>
+  <!-- ═══ Cambios entre cortes ═══ -->
+  <section class="nt-tab" id="tab-cambios" role="tabpanel" aria-labelledby="t-cambios" hidden>
+    <p class="nt-empty" data-draw="cmp-msg">—</p>
+    <div class="nt-kpis" id="cambios-resumen">
+      <div class="nt-kpi is-ok"><span>Entregadas o escrituradas en el período</span><strong data-draw="c-entregadas">—</strong><small>Pasaron a Entregado o Escriturado</small></div>
+      <div class="nt-kpi is-soon"><span>Nuevos compromisos</span><strong data-draw="c-compromisos">—</strong><small>Pasaron a Adjudicado o Reservado</small></div>
+      <div class="nt-kpi is-alert"><span>Fechas postergadas</span><strong data-draw="c-post">—</strong><small data-draw="c-post-m"></small></div>
+      <div class="nt-kpi"><span>Fechas adelantadas</span><strong data-draw="c-adel">—</strong><small data-draw="c-adel-m"></small></div>
+      <div class="nt-kpi"><span>Altas y bajas de unidades</span><strong data-draw="c-altas">—</strong><small>Unidades nuevas / que ya no figuran</small></div>
+    </div>
+    <div class="nt-card" id="evolucion">
+      <h2>Evolución corte a corte</h2>
+      <p class="nt-note">Viviendas de cada corte según su estado. Sigue los filtros de provincia, emprendimiento, tipo, razón y avance de obra.</p>
+      <div class="nt-legend" data-draw="evo-legend"></div>
+      <div class="nt-chart" data-draw="evolucion"></div>
+    </div>
+    <div class="nt-card" id="calendario-por-corte">
+      <h2>Compromisos por año, según cada corte</h2>
+      <p class="nt-note">Viviendas comprometidas pendientes de entrega por año planificado, una línea por corte. Si la línea del corte más nuevo (naranja) se corre a la derecha, las entregas se postergaron.</p>
+      <div class="nt-legend" data-draw="anios-legend"></div>
+      <div class="nt-chart" data-draw="anios-cortes"></div>
+    </div>
+    <div class="nt-card" id="cambios-emp">
+      <h2>Cambios por emprendimiento</h2>
+      <p class="nt-note">Comparación del corte actual con el elegido arriba. Pendientes son las viviendas sin entregar ni escriturar.</p>
+      <div class="nt-tablebox">
+        <table class="nt-table">
+          <thead><tr>
+            <th><span>Emprendimiento</span></th>
+            <th class="num"><span>Entregadas</span></th>
+            <th class="num"><span>Nuevos compromisos</span></th>
+            <th class="num"><span>Liberadas</span></th>
+            <th class="num"><span>Postergadas</span></th>
+            <th class="num"><span>Adelantadas</span></th>
+            <th class="num"><span>Pendientes antes</span></th>
+            <th class="num"><span>Pendientes ahora</span></th>
+          </tr></thead>
+          <tbody data-draw="cambios-emp"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="nt-card" id="cambios-detalle">
+      <h2>Detalle de cambios</h2>
+      <p class="nt-note">Unidades que cambiaron de razón para el estado o de fecha de entrega, y las que se dieron de alta o de baja. <span data-draw="cambios-count"></span></p>
+      <input type="search" id="c-search" class="nt-search" placeholder="Buscar unidad o emprendimiento…" aria-label="Buscar en el detalle de cambios">
+      <div class="nt-tablebox">
+        <table class="nt-table">
+          <thead><tr>
+            <th><span>Emprendimiento</span></th>
+            <th><span>Unidad</span></th>
+            <th class="nt-hide-sm"><span>Etapa</span></th>
+            <th><span>Razón para el estado</span></th>
+            <th><span>Fecha de entrega</span></th>
+          </tr></thead>
+          <tbody data-draw="cambios-detalle"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 </div>
+</div>
 
 <script>
+/* Reglas y utilidades compartidas */
 (function () {
   const RAZONES = ['Disponible', 'Reservado SAAT', 'Reservado-Canje', 'Reservado', 'Directorio - Reservado', 'Adjudicado', 'No Disponible', 'Escriturado', 'Entregado', 'Sin dato'];
   const CERRADAS = new Set(['Entregado', 'Escriturado']);
+  const COMP = new Set(['Adjudicado', 'Reservado SAAT', 'Reservado-Canje', 'Reservado', 'Directorio - Reservado']);
+  const RESERV = new Set(['Reservado SAAT', 'Reservado-Canje', 'Reservado', 'Directorio - Reservado']);
+  const TIPOS = ['Casa', 'Casa Futura', 'Duplex', 'Departamento', 'Departamento con pileta'];
+  const TIPO_LABEL = { 'Casa': 'Casa', 'Casa Futura': 'Casa futura', 'Duplex': 'Dúplex', 'Departamento': 'Depto.', 'Departamento con pileta': 'Depto. c/ pileta' };
   const LIMIT = 1500;
-  const parse = (s) => (s ? new Date(s + 'T00:00:00Z') : null);
-  const fmtDate = (d) => new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
-  const fmtMonth = (d) => new Intl.DateTimeFormat('es-AR', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+  const fmtDate = (d) => new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(d);
+  const fmtLong = (d) => new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+  const fmtCorte = (c) => fmtDate(new Date(c + 'T00:00:00Z'));
   const fmtN = (n) => new Intl.NumberFormat('es-AR').format(n);
+  const fmtD = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtN(Math.abs(n));
   const today = new Date(); today.setUTCHours(0, 0, 0, 0);
   const in12 = new Date(today); in12.setUTCFullYear(in12.getUTCFullYear() + 1);
   const empNum = (e) => { const m = /Natania\s*(\d+)/i.exec(e); return m ? +m[1] : 999; };
+  const sortEmp = (a, b) => empNum(a) - empNum(b) || a.localeCompare(b);
 
   function color(r) {
     const c = dash.colors;
     const map = {
       'Disponible': '#FB7520', 'Reservado SAAT': c[0], 'Reservado-Canje': c[2], 'Reservado': c[2], 'Directorio - Reservado': c[2],
-      'Adjudicado': c[1], 'No Disponible': c[4], 'Escriturado': c[6], 'Entregado': 'var(--cds-chart-muted)', 'Sin dato': 'var(--cds-chart-muted)'
+      'Adjudicado': c[1], 'No Disponible': c[4], 'Escriturado': c[3], 'Entregado': 'var(--cds-chart-muted)', 'Sin dato': 'var(--cds-chart-muted)'
     };
     return map[r] || c[5];
   }
-
-  let cacheKey = null, cache = null;
-  function rows() {
-    const g = dash.data('viviendas');
-    if (g.status !== 'ok') return null;
-    return g.data.map((r) => r._d !== undefined ? r : Object.assign(r, { _d: parse(r.fecha) }));
-  }
-  function match(r, p, skip) {
-    if (!p.hist && CERRADAS.has(r.razon)) return false;
+  const rows = () => { const g = dash.data('viviendas'); return g.status === 'ok' ? g.data : null; };
+  const prevRows = () => { const g = dash.data('comparacion'); return g.status === 'ok' ? g.data : null; };
+  // skip: un filtro a ignorar (para armar las opciones de su propio desplegable); conHist: no esconder entregadas
+  function match(r, p, skip, conHist) {
+    if (!conHist && !p.hist && CERRADAS.has(r.razon)) return false;
     if (skip !== 'prov' && p.prov && r.provincia !== p.prov) return false;
     if (skip !== 'emp' && p.emp && r.emprendimiento !== p.emp) return false;
     if (skip !== 'etapa' && p.etapa && r.etapa !== p.etapa) return false;
     if (skip !== 'tipo' && p.tipo && r.tipo !== p.tipo) return false;
     if (skip !== 'estilo' && p.estilo && r.estilo !== p.estilo) return false;
     if (skip !== 'razon' && p.razon && r.razon !== p.razon) return false;
+    if (skip !== 'avance' && p.avance && r.avance !== p.avance) return false;
     return true;
   }
+  let fKey = null, fVal = null, pKey = null, pVal = null;
   function filtered() {
     const all = rows(); if (!all) return null;
-    const p = dash.params(); const key = JSON.stringify(p) + all.length;
-    if (key === cacheKey) return cache;
-    cacheKey = key; cache = all.filter((r) => match(r, p));
-    return cache;
+    const k = JSON.stringify(dash.params());
+    if (k !== fKey) { fKey = k; fVal = all.filter((r) => match(r, dash.params())); }
+    return fVal;
+  }
+  function prevFiltered() {
+    const all = prevRows(); if (!all) return null;
+    const k = JSON.stringify(dash.params()) + all.length;
+    if (k !== pKey) { pKey = k; pVal = all.filter((r) => match(r, dash.params())); }
+    return pVal;
   }
   const isLate = (r) => r._d && r._d < today && !CERRADAS.has(r.razon);
-  window.NT = { RAZONES, CERRADAS, LIMIT, rows, filtered, match, color, fmtDate, fmtMonth, fmtN, today, in12, empNum, isLate, parse };
+  window.NT = { RAZONES, CERRADAS, COMP, RESERV, TIPOS, TIPO_LABEL, LIMIT, rows, prevRows, filtered, prevFiltered, match, color,
+    fmtDate, fmtLong, fmtCorte, fmtN, fmtD, today, in12, empNum, sortEmp, isLate };
 })();
 </script>
 
 <script>
+/* Encabezado, cortes, filtros, indicadores y pestañas */
 (function () {
-  const { fmtN, fmtDate, today, in12, isLate } = window.NT;
-  const dashIf = (el, v) => { el.textContent = v == null ? '—' : v; };
+  const { fmtN, fmtD, fmtLong, fmtCorte, today, in12, isLate } = window.NT;
+  const put = (el, v) => { el.textContent = v == null ? '—' : v; };
+  const kpis = {
+    total: (f) => f.length,
+    late: (f) => f.filter(isLate).length,
+    m12: (f) => f.filter((r) => r._d && r._d >= today && r._d < in12 && !NT.CERRADAS.has(r.razon)).length,
+    nodate: (f) => f.filter((r) => !r._d).length,
+  };
+  function kpi(name, key) {
+    dash.draw(name, (el) => { const f = NT.filtered(); put(el, f ? fmtN(kpis[key](f)) : null); });
+    dash.draw(name + '-d', (el) => {
+      const f = NT.filtered(), pf = NT.prevFiltered(), p = dash.params();
+      if (!f || !pf) { el.textContent = ''; return; }
+      const d = kpis[key](f) - kpis[key](pf);
+      el.textContent = (d === 0 ? 'Sin cambios' : fmtD(d)) + ' vs. ' + fmtCorte(p.cmp);
+    });
+  }
+  kpi('k-total', 'total'); kpi('k-late', 'late'); kpi('k-12m', 'm12'); kpi('k-nodate', 'nodate');
 
-  dash.draw('lead-n', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.length) : null); });
-  dash.draw('lead-late', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.filter(isLate).length) : null); });
+  dash.draw('lead-n', (el) => { const f = NT.filtered(); put(el, f ? fmtN(f.length) : null); });
+  dash.draw('lead-late', (el) => { const f = NT.filtered(); put(el, f ? fmtN(f.filter(isLate).length) : null); });
   function nextUp() {
     const f = NT.filtered(); if (!f) return null;
     const up = f.filter((r) => r._d && r._d >= today && !NT.CERRADAS.has(r.razon)).sort((a, b) => a._d - b._d);
     return up.length ? up[0] : false;
   }
-  dash.draw('lead-next', (el) => { const n = nextUp(); dashIf(el, n === null ? null : n ? fmtDate(n._d) : 'sin fechas futuras'); });
-  dash.draw('lead-next-emp', (el) => { const n = nextUp(); dashIf(el, n === null ? null : n ? n.emprendimiento + ' · ' + n.etapa : 'ningún emprendimiento'); });
+  dash.draw('lead-next', (el) => { const n = nextUp(); put(el, n === null ? null : n ? NT.fmtDate(n._d) : 'sin fechas futuras'); });
+  dash.draw('lead-next-emp', (el) => { const n = nextUp(); put(el, n === null ? null : n ? n.emprendimiento + ' · ' + n.etapa : 'ningún emprendimiento'); });
 
-  dash.draw('k-total', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.length) : null); });
-  dash.draw('k-late', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.filter(isLate).length) : null); });
-  dash.draw('k-12m', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.filter((r) => r._d && r._d >= today && r._d < in12 && !NT.CERRADAS.has(r.razon)).length) : null); });
-  dash.draw('k-nodate', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.filter((r) => !r._d).length) : null); });
+  dash.draw('corte-actual', (el) => { const h = dash.data('historial'); put(el, h.status === 'ok' ? fmtLong(new Date(h.data[h.data.length - 1].corte + 'T00:00:00Z')) : null); });
+  dash.draw('cortes-n', (el) => { const h = dash.data('historial'); el.textContent = h.status === 'ok' ? '· ' + h.data.length + (h.data.length === 1 ? ' corte cargado' : ' cortes cargados') : ''; });
+  dash.draw('sel-cmp', (sel) => {
+    const h = dash.data('historial');
+    if (h.status !== 'ok') { sel.replaceChildren(new Option('—', '')); return; }
+    const prev = h.data.slice(0, -1).reverse();
+    if (!prev.length) { const o = new Option('No hay cortes anteriores todavía', ''); sel.replaceChildren(o); sel.disabled = true; return; }
+    sel.disabled = false;
+    sel.replaceChildren(new Option('Sin comparación', ''), ...prev.map((c) => new Option(fmtCorte(c.corte), c.corte)));
+    sel.value = dash.params().cmp || '';
+    sel.onchange = () => dash.setParams({ cmp: sel.value || null });
+  });
 
-  // Selects
   const SELS = [
     ['sel-prov', 'prov', 'provincia', 'Todas las provincias'],
     ['sel-emp', 'emp', 'emprendimiento', 'Todos los emprendimientos'],
@@ -270,21 +482,19 @@
     ['sel-tipo', 'tipo', 'tipo', 'Todos los tipos'],
     ['sel-estilo', 'estilo', 'estilo', 'Todos los estilos'],
     ['sel-razon', 'razon', 'razon', 'Todas las razones'],
+    ['sel-avance', 'avance', 'avance', 'Todo avance de obra'],
   ];
   SELS.forEach(([name, param, col, allLabel]) => {
     dash.draw(name, (sel) => {
-      const all = NT.rows();
-      const p = dash.params();
-      let opts = [];
-      if (all) {
-        const counts = d3.rollup(all.filter((r) => NT.match(r, p, param)), (v) => v.length, (r) => r[col]);
-        opts = Array.from(counts.keys());
-        if (param === 'emp') opts.sort((a, b) => NT.empNum(a) - NT.empNum(b) || a.localeCompare(b));
-        else if (param === 'razon') opts.sort((a, b) => NT.RAZONES.indexOf(a) - NT.RAZONES.indexOf(b));
-        else opts.sort((a, b) => a.localeCompare(b));
-        if (p[param] && !counts.has(p[param])) { opts.unshift(p[param]); counts.set(p[param], 0); }
-        sel.replaceChildren(new Option(allLabel, ''), ...opts.map((o) => new Option(o + ' (' + NT.fmtN(counts.get(o)) + ')', o)));
-      } else sel.replaceChildren(new Option(allLabel, ''));
+      const all = NT.rows(), p = dash.params();
+      if (!all) { sel.replaceChildren(new Option(allLabel, '')); return; }
+      const counts = d3.rollup(all.filter((r) => NT.match(r, p, param)), (v) => v.length, (r) => r[col]);
+      const opts = Array.from(counts.keys());
+      if (param === 'emp') opts.sort(NT.sortEmp);
+      else if (param === 'razon') opts.sort((a, b) => NT.RAZONES.indexOf(a) - NT.RAZONES.indexOf(b));
+      else opts.sort((a, b) => a.localeCompare(b));
+      if (p[param] && !counts.has(p[param])) { opts.unshift(p[param]); counts.set(p[param], 0); }
+      sel.replaceChildren(new Option(allLabel, ''), ...opts.map((o) => new Option(o + ' (' + fmtN(counts.get(o)) + ')', o)));
       sel.value = p[param] || '';
       sel.onchange = () => {
         const upd = { [param]: sel.value || null };
@@ -295,14 +505,28 @@
     });
   });
 
-  const hist = document.querySelectorAll('#f-hist');
-  hist.forEach((h) => h.addEventListener('change', () => dash.setParams({ hist: h.checked })));
-  document.querySelectorAll('#f-reset').forEach((b) => b.addEventListener('click', () => dash.resetParams()));
-  dash.onData(() => { hist.forEach((h) => { h.checked = !!dash.params().hist; }); });
+  const hist = document.getElementById('f-hist');
+  hist.addEventListener('change', () => dash.setParams({ hist: hist.checked }));
+  document.getElementById('f-reset').addEventListener('click', () => dash.resetParams());
+  document.querySelectorAll('.nt-tabs button').forEach((b) => b.addEventListener('click', () => {
+    dash.setParams({ tab: b.dataset.tab });
+    try { history.replaceState(null, '', '#' + b.dataset.tab); } catch (e) { }
+  }));
+  document.querySelectorAll('.nt-seg button').forEach((b) => b.addEventListener('click', () => dash.setParams({ modo: b.dataset.modo })));
+  const h = location.hash.slice(1);
+  if (['calendario', 'emprendimientos', 'cambios'].includes(h)) dash.setParams({ tab: h });
+  dash.onData(() => {
+    const p = dash.params();
+    hist.checked = !!p.hist;
+    document.querySelectorAll('.nt-tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === p.tab)));
+    document.querySelectorAll('.nt-tab').forEach((s) => { s.hidden = s.id !== 'tab-' + p.tab; });
+    document.querySelectorAll('.nt-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.modo === p.modo)));
+  });
 })();
 </script>
 
 <script>
+/* Calendario: gráfico por trimestre, línea de tiempo y detalle */
 (function () {
   function tip(host) {
     let t = host.querySelector(':scope > .nt-tip');
@@ -330,168 +554,89 @@
     });
   }
   window.NTtip = { tip, placeTip, fillTip };
+  const width = (el) => Math.max(280, el.clientWidth || (el.closest('.nt') || document.body).clientWidth - 48);
 
+  function legend(el, keys) {
+    el.replaceChildren();
+    keys.forEach(([label, col]) => {
+      const s = document.createElement('span'); const i = document.createElement('i'); i.style.background = col;
+      s.appendChild(i); s.appendChild(document.createTextNode(label)); el.appendChild(s);
+    });
+  }
+  window.NTlegend = legend;
   dash.draw('legend', (el) => {
     const f = NT.filtered();
-    el.replaceChildren();
     if (!f) { el.textContent = '—'; return; }
     const present = new Set(f.map((r) => r.razon));
-    NT.RAZONES.filter((r) => present.has(r)).forEach((r) => {
-      const s = document.createElement('span'); const i = document.createElement('i'); i.style.background = NT.color(r);
-      s.appendChild(i); s.appendChild(document.createTextNode(r)); el.appendChild(s);
-    });
+    legend(el, NT.RAZONES.filter((r) => present.has(r)).map((r) => [r, NT.color(r)]));
   });
+
+  // Ejes y barras apiladas reutilizables (trimestres y evolución por corte)
+  function stacked(el, { keys, series, label, tickText, tipTitle, todayKey, H = 260 }) {
+    el.replaceChildren();
+    const W = width(el);
+    const table = keys.map((k) => { const o = { k }; series.forEach((s) => { o[s.key] = s.get(k) || 0; }); return o; });
+    const ymax = d3.max(table, (o) => d3.sum(series, (s) => o[s.key])) || 1;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', label);
+    const y = d3.scaleLinear([0, ymax], [H - 24, 8]).nice();
+    const yAxis = svg.append('g').call(d3.axisLeft(y).ticks(5).tickSize(0).tickFormat(d3.format('~s')));
+    yAxis.attr('font-size', null).attr('font-family', null);
+    yAxis.selectAll('text').style('fill', 'var(--color-fg-muted)').style('font-size', '12px');
+    let ml = 0; yAxis.selectAll('text').each(function () { ml = Math.max(ml, this.getComputedTextLength()); });
+    ml += 10; yAxis.attr('transform', `translate(${ml - 4},0)`); yAxis.select('.domain').remove();
+    const x = d3.scaleBand(keys, [ml, W - 4]).paddingInner(keys.length > 40 ? 0.15 : 0.3).paddingOuter(keys.length < 6 ? 0.3 : 0.05);
+    svg.insert('g', ':first-child').selectAll('line').data(y.ticks(5)).join('line').attr('x1', ml).attr('x2', W - 4).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).style('stroke', 'var(--cds-chart-grid)');
+    const ticks = tickText(keys, x, W - ml);
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', (d) => d.x).attr('y', H - 6).attr('text-anchor', (d) => d.anchor || 'start')
+      .style('fill', 'var(--color-fg-muted)').style('font-size', '12px').text((d) => d.t);
+    svg.append('line').attr('x1', ml).attr('x2', W - 4).attr('y1', y(0)).attr('y2', y(0)).style('stroke', 'var(--cds-chart-axis)');
+    const st = d3.stack().keys(series.map((s) => s.key))(table);
+    const bars = svg.append('g');
+    st.forEach((s, i) => {
+      bars.append('g').style('fill', series[i].color).selectAll('rect').data(s).join('rect')
+        .attr('x', (d) => x(d.data.k)).attr('width', Math.min(x.bandwidth(), 64)).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1])));
+    });
+    if (todayKey) {
+      const tx = todayKey(x);
+      svg.append('line').attr('x1', tx).attr('x2', tx).attr('y1', 4).attr('y2', H - 24).style('stroke', '#FB7520').attr('stroke-width', 2).attr('stroke-dasharray', '4 3');
+    }
+    const t = tip(el);
+    svg.append('g').selectAll('rect').data(table).join('rect').attr('x', (d) => x(d.k) - (x.step() - x.bandwidth()) / 2).attr('width', x.step()).attr('y', 0).attr('height', H - 24).style('fill', 'transparent')
+      .on('pointermove', (ev, d) => {
+        const lines = series.filter((s) => d[s.key]).map((s) => [s.label, d[s.key], s.color]);
+        lines.push(['Total', d3.sum(series, (s) => d[s.key]), null]);
+        fillTip(t, tipTitle(d.k), lines); placeTip(t, el, ev);
+      })
+      .on('pointerleave', () => { t.hidden = true; });
+  }
+  window.NTstacked = stacked;
 
   dash.draw('quarters', (el) => {
     const f = NT.filtered();
-    el.replaceChildren();
-    if (!f) { el.textContent = '—'; return; }
+    if (!f) { el.replaceChildren(); return; }
     const dated = f.filter((r) => r._d);
     if (!dated.length) { el.textContent = 'No hay viviendas con fecha planificada para estos filtros.'; return; }
     const qKey = (d) => d.getUTCFullYear() * 4 + Math.floor(d.getUTCMonth() / 3);
     const ext = d3.extent(dated, (r) => qKey(r._d));
-    const lo = Math.min(ext[0], qKey(NT.today)), hi = Math.max(ext[1], qKey(NT.today));
-    const keys = d3.range(lo, hi + 1);
-    const razones = NT.RAZONES.filter((r) => dated.some((x) => x.razon === r));
+    const keys = d3.range(Math.min(ext[0], qKey(NT.today)), Math.max(ext[1], qKey(NT.today)) + 1);
     const by = d3.rollup(dated, (v) => v.length, (r) => qKey(r._d), (r) => r.razon);
-    const table = keys.map((k) => { const o = { k }; razones.forEach((r) => { o[r] = (by.get(k) && by.get(k).get(r)) || 0; }); return o; });
-    const stack = d3.stack().keys(razones)(table);
-    const W = Math.max(280, el.clientWidth), H = 260;
-    const ymax = d3.max(table, (o) => d3.sum(razones, (r) => o[r])) || 1;
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Unidades por trimestre de entrega');
-    const y = d3.scaleLinear([0, ymax], [H - 24, 8]).nice();
-    const yAxis = svg.append('g').call(d3.axisLeft(y).ticks(5).tickSize(0).tickFormat(d3.format('~s')));
-    yAxis.attr('font-size', null).attr('font-family', null);
-    let ml = 0; yAxis.selectAll('text').each(function () { ml = Math.max(ml, this.getComputedTextLength()); });
-    ml += 10; yAxis.attr('transform', `translate(${ml - 4},0)`); yAxis.select('.domain').remove();
-    yAxis.selectAll('text').style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)');
-    const x = d3.scaleBand(keys, [ml, W - 4]).paddingInner(keys.length > 40 ? 0.15 : 0.25);
-    svg.insert('g', ':first-child').selectAll('line').data(y.ticks(5)).join('line').attr('x1', ml).attr('x2', W - 4).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).style('stroke', 'var(--cds-chart-grid)');
-    const years = keys.filter((k) => k % 4 === 0);
-    const step = Math.ceil(years.length / Math.max(1, Math.floor((W - ml) / 46)));
-    svg.append('g').selectAll('text').data(years.filter((_, i) => i % step === 0)).join('text')
-      .attr('x', (k) => x(k)).attr('y', H - 6).style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text((k) => k / 4);
-    svg.append('line').attr('x1', ml).attr('x2', W - 4).attr('y1', y(0)).attr('y2', y(0)).style('stroke', 'var(--cds-chart-axis)');
-    const bars = svg.append('g');
-    stack.forEach((s) => {
-      bars.append('g').style('fill', NT.color(s.key)).selectAll('rect').data(s).join('rect')
-        .attr('x', (d) => x(d.data.k)).attr('width', x.bandwidth()).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1])));
-    });
-    const tk = qKey(NT.today);
-    const tx = x(tk) + x.bandwidth() * ((NT.today.getUTCMonth() % 3) / 3);
-    svg.append('line').attr('x1', tx).attr('x2', tx).attr('y1', 4).attr('y2', H - 24).style('stroke', '#FB7520').attr('stroke-width', 2).attr('stroke-dasharray', '4 3');
-    const t = NTtip.tip(el);
-    svg.append('g').selectAll('rect').data(table).join('rect').attr('x', (d) => x(d.k) - (x.step() - x.bandwidth()) / 2).attr('width', x.step()).attr('y', 0).attr('height', H - 24).style('fill', 'transparent')
-      .on('pointermove', (ev, d) => {
-        const lines = razones.filter((r) => d[r]).map((r) => [r, d[r], NT.color(r)]);
-        lines.push(['Total', d3.sum(razones, (r) => d[r]), null]);
-        NTtip.fillTip(t, `T${(d.k % 4) + 1} ${Math.floor(d.k / 4)}`, lines);
-        NTtip.placeTip(t, el, ev);
-      })
-      .on('pointerleave', () => { t.hidden = true; });
-  });
-
-  function groups(f) {
-    const dated = f.filter((r) => r._d);
-    const g = d3.groups(dated, (r) => r.provincia, (r) => r.emprendimiento, (r) => r.etapa);
-    const out = [];
-    g.sort((a, b) => a[0].localeCompare(b[0])).forEach(([prov, emps]) => {
-      out.push({ kind: 'prov', label: prov });
-      emps.sort((a, b) => NT.empNum(a[0]) - NT.empNum(b[0]) || a[0].localeCompare(b[0])).forEach(([emp, etapas]) => {
-        etapas.sort((a, b) => d3.min(a[1], (r) => r._d) - d3.min(b[1], (r) => r._d) || a[0].localeCompare(b[0])).forEach(([etapa, rs]) => {
-          const pts = d3.groups(rs, (r) => r.fecha).map(([fecha, v]) => ({ fecha, d: v[0]._d, rows: v }));
-          out.push({ kind: 'row', prov, emp, etapa, pts, n: rs.length });
-        });
-      });
-    });
-    return out;
-  }
-  function domain(f) {
-    const dated = f.filter((r) => r._d);
-    const e = d3.extent(dated, (r) => r._d);
-    let lo = d3.min([e[0], NT.today]), hi = d3.max([e[1], NT.today]);
-    lo = d3.utcYear.floor(lo); hi = d3.utcYear.ceil(new Date(+hi + 1));
-    return [lo, hi];
-  }
-  const MARGIN = { l: 24, r: 24 };
-
-  dash.draw('tl-axis', (el) => {
-    const f = NT.filtered();
-    el.replaceChildren();
-    if (!f || !f.some((r) => r._d)) return;
-    const W = Math.max(280, el.clientWidth);
-    const x = d3.scaleUtc(domain(f), [MARGIN.l, W - MARGIN.r]);
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} 28`).attr('aria-hidden', 'true');
-    const ticks = x.ticks(Math.max(2, Math.floor(W / 70)));
-    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', (d) => x(d)).attr('y', 18).attr('text-anchor', 'middle')
-      .style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text((d) => d.getUTCFullYear());
-    const tx = x(NT.today);
-    svg.append('text').attr('x', tx).attr('y', 8).attr('text-anchor', 'middle').style('fill', '#FB7520').style('font-size', '10px').style('font-weight', 600).text('hoy');
-  });
-
-  dash.draw('timeline', (el) => {
-    const f = NT.filtered();
-    el.replaceChildren();
-    if (!f) { el.textContent = '—'; return; }
-    const gs = groups(f);
-    if (!gs.length) { el.textContent = 'No hay viviendas con fecha planificada para estos filtros.'; return; }
-    const W = Math.max(280, el.clientWidth);
-    const RH = 46, PH = 32;
-    let yy = 6; gs.forEach((g) => { g.y = yy; yy += g.kind === 'prov' ? PH : RH; });
-    const H = yy + 6;
-    const x = d3.scaleUtc(domain(f), [MARGIN.l, W - MARGIN.r]);
-    const maxN = d3.max(gs.filter((g) => g.kind === 'row'), (g) => d3.max(g.pts, (p) => p.rows.length)) || 1;
-    const r = d3.scaleSqrt([0, maxN], [0, 10]);
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Línea de tiempo de entregas por emprendimiento y etapa');
-    svg.append('g').selectAll('line').data(x.ticks(Math.max(2, Math.floor(W / 70)))).join('line')
-      .attr('x1', (d) => x(d)).attr('x2', (d) => x(d)).attr('y1', 0).attr('y2', H).style('stroke', 'var(--cds-chart-grid)');
-    const tx = x(NT.today);
-    svg.append('line').attr('x1', tx).attr('x2', tx).attr('y1', 0).attr('y2', H).style('stroke', '#FB7520').attr('stroke-width', 2).attr('stroke-dasharray', '4 3');
-    const t = NTtip.tip(el);
-    gs.forEach((g) => {
-      const G = svg.append('g').attr('transform', `translate(0,${g.y})`);
-      if (g.kind === 'prov') {
-        G.append('text').attr('x', MARGIN.l).attr('y', 20).style('fill', 'var(--color-fg)').style('font-weight', 700).style('font-size', 'var(--cds-font-size-body)').text(g.label);
-        G.append('line').attr('x1', MARGIN.l).attr('x2', W - MARGIN.r).attr('y1', PH - 2).attr('y2', PH - 2).style('stroke', 'var(--color-border-line)');
-        return;
-      }
-      const lab = G.append('text').attr('class', 'nt-tl-label').attr('x', MARGIN.l).attr('y', 13).style('font-size', 'var(--cds-font-size-caption)');
-      lab.append('tspan').style('fill', 'var(--color-fg)').style('font-weight', 600).text(g.emp);
-      lab.append('tspan').style('fill', 'var(--color-fg-muted)').text('  ·  ' + g.etapa + '  ·  ' + NT.fmtN(g.n) + ' u.');
-      lab.on('click', () => dash.setParams({ prov: g.prov, emp: g.emp, etapa: null }));
-      const cy = 31;
-      const ext = d3.extent(g.pts, (p) => p.d);
-      G.append('line').attr('x1', x(ext[0])).attr('x2', x(ext[1])).attr('y1', cy).attr('y2', cy).style('stroke', 'var(--cds-chart-axis)').attr('stroke-width', 2).attr('stroke-linecap', 'round');
-      G.selectAll('circle').data(g.pts).join('circle').attr('cx', (p) => x(p.d)).attr('cy', cy).attr('r', (p) => Math.max(3, r(p.rows.length)))
-        .style('fill', (p) => {
-          const c = d3.rollups(p.rows, (v) => v.length, (q) => q.razon).sort((a, b) => b[1] - a[1]);
-          return NT.color(c[0][0]);
-        })
-        .attr('fill-opacity', 0.9).style('stroke', 'var(--color-panel)').attr('stroke-width', 1)
-        .style('stroke', (p) => p.rows.some(NT.isLate) ? 'var(--color-bad)' : 'var(--color-panel)').attr('stroke-width', (p) => p.rows.some(NT.isLate) ? 2 : 1)
-        .on('pointermove', (ev, p) => {
-          const lines = [];
-          d3.rollups(p.rows, (v) => v.length, (q) => q.razon).sort((a, b) => NT.RAZONES.indexOf(a[0]) - NT.RAZONES.indexOf(b[0])).forEach(([k, n]) => lines.push([k, n, NT.color(k)]));
-          d3.rollups(p.rows, (v) => v.length, (q) => q.estilo).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => lines.push(['Estilo: ' + k, n, null]));
-          d3.rollups(p.rows, (v) => v.length, (q) => q.tipo).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => lines.push(['Tipo: ' + k, n, null]));
-          NTtip.fillTip(t, NT.fmtDate(p.d) + ' · ' + g.emp + ' · ' + g.etapa, lines);
-          NTtip.placeTip(t, el, ev);
-        })
-        .on('pointerleave', () => { t.hidden = true; });
+    const razones = NT.RAZONES.filter((r) => dated.some((x) => x.razon === r));
+    stacked(el, {
+      keys, label: 'Unidades por trimestre de entrega',
+      series: razones.map((r) => ({ key: r, label: r, color: NT.color(r), get: (k) => by.get(k) && by.get(k).get(r) })),
+      tickText: (ks, x, w) => { const ys = ks.filter((k) => k % 4 === 0); const step = Math.ceil(ys.length / Math.max(1, Math.floor(w / 46))); return ys.filter((_, i) => i % step === 0).map((k) => ({ x: x(k), t: k / 4 })); },
+      tipTitle: (k) => `T${(k % 4) + 1} ${Math.floor(k / 4)}`,
+      todayKey: (x) => x(qKey(NT.today)) + x.bandwidth() * ((NT.today.getUTCMonth() % 3) / 3),
     });
   });
-})();
-</script>
 
-<script>
-(function () {
+  // Detalle por unidad
   let sortCol = 'fecha', sortDir = 1;
-  const search = document.querySelectorAll('#t-search');
-  search.forEach((s) => s.addEventListener('input', () => { dash.draw('table'); dash.draw('table-count'); }));
-  const q = () => { let v = ''; search.forEach((s) => { v = s.value; }); return v.trim().toLowerCase(); };
+  const search = document.getElementById('t-search');
+  search.addEventListener('input', () => { dash.draw('table'); dash.draw('table-count'); });
   function shown() {
     const f = NT.filtered(); if (!f) return null;
-    const term = q();
+    const term = search.value.trim().toLowerCase();
     const rs = term ? f.filter((r) => (r.nombre + ' ' + r.emprendimiento + ' ' + r.etapa + ' ' + r.estilo + ' ' + r.razon).toLowerCase().includes(term)) : f.slice();
     rs.sort((a, b) => {
       const va = a[sortCol], vb = b[sortCol];
@@ -500,10 +645,10 @@
     });
     return rs;
   }
-  document.querySelectorAll('.nt-table th button[data-sort]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#t-detalle th button[data-sort]').forEach((b) => b.addEventListener('click', () => {
     const c = b.dataset.sort;
     if (c === sortCol) sortDir = -sortDir; else { sortCol = c; sortDir = 1; }
-    document.querySelectorAll('.nt-table th').forEach((th) => th.setAttribute('aria-sort', th.dataset.field === sortCol ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
+    document.querySelectorAll('#t-detalle th').forEach((th) => th.setAttribute('aria-sort', th.dataset.field === sortCol ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
     dash.draw('table');
   }));
   dash.draw('table-count', (el) => {
@@ -518,13 +663,13 @@
     if (!rs) return;
     const frag = document.createDocumentFragment();
     rs.slice(0, NT.LIMIT).forEach((r) => {
-      const tr = document.createElement('tr'); tr.dataset.key = r.id;
+      const tr = document.createElement('tr');
       COLS.forEach((c) => {
         const td = document.createElement('td');
         if (c === 'tipo' || c === 'avance' || c === 'provincia') td.className = 'nt-hide-sm';
         if (c === 'razon') { const s = document.createElement('span'); s.className = 'nt-pill'; s.style.color = NT.color(r.razon); s.textContent = r.razon; td.appendChild(s); }
+        else if (c === 'fecha') { td.textContent = r._d ? NT.fmtDate(r._d) : 'Sin fecha'; if (NT.isLate(r)) td.classList.add('nt-late'); }
         else td.textContent = r[c] == null ? '' : r[c];
-        if (c === 'fecha' && NT.isLate(r)) td.classList.add('nt-late');
         tr.appendChild(td);
       });
       frag.appendChild(tr);
@@ -535,11 +680,315 @@
 </script>
 
 <script>
+/* Por emprendimiento: matriz año a año y reporte por etapa */
 (function () {
-  const c = (window.DATOS || {}).corte, el = document.getElementById('corte');
-  if (c && el) el.textContent = new Date(c + 'T00:00:00Z').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const { fmtN, fmtD, fmtDate } = NT;
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const delta = (d) => { if (!d) return null; return el('span', 'nt-d ' + (d > 0 ? 'up' : 'down'), fmtD(d)); };
+
+  // Matriz: viviendas pendientes (sin hist) por emprendimiento y año
+  function cuenta(rs, modo) {
+    const p = dash.params();
+    const pend = rs.filter((r) => !NT.CERRADAS.has(r.razon) && NT.match(r, p, null, true) && (modo === 'todas' || NT.COMP.has(r.razon)));
+    return { pend, m: d3.rollup(pend, (v) => v.length, (r) => r.emprendimiento, (r) => (r._d ? r._d.getUTCFullYear() : 'sf')) };
+  }
+  dash.draw('matriz', (host) => {
+    host.replaceChildren();
+    const all = NT.rows(); if (!all) return;
+    const p = dash.params(), prev = NT.prevRows();
+    const A = cuenta(all, p.modo), B = prev ? cuenta(prev, p.modo) : null;
+    if (!A.pend.length) { host.appendChild(el('p', 'nt-empty', 'No hay viviendas pendientes para estos filtros.')); return; }
+    const yearsSet = new Set(A.pend.filter((r) => r._d).map((r) => r._d.getUTCFullYear()));
+    const years = Array.from(yearsSet).sort((a, b) => a - b);
+    const anySf = A.pend.some((r) => !r._d);
+    const cols = years.concat(anySf ? ['sf'] : []);
+    const provOf = new Map(A.pend.map((r) => [r.emprendimiento, r.provincia]));
+    const emps = Array.from(A.m.keys()).sort((a, b) => provOf.get(a).localeCompare(provOf.get(b)) || NT.sortEmp(a, b));
+    const max = d3.max(emps, (e) => d3.max(years, (y) => A.m.get(e).get(y) || 0)) || 1;
+    const curYear = NT.today.getUTCFullYear();
+    const val = (M, e, c) => (M && M.get(e) && M.get(e).get(c)) || 0;
+    const rowTot = (M, e) => (M && M.get(e) ? d3.sum(M.get(e).values()) : 0);
+
+    const t = el('table', 'nt-mx'); const thead = el('thead'); const hr = el('tr');
+    hr.appendChild(el('th', 'emp', 'Emprendimiento'));
+    cols.forEach((c) => { const th = el('th', c !== 'sf' && c < curYear ? 'past' : '', c === 'sf' ? 'Sin fecha' : String(c)); hr.appendChild(th); });
+    hr.appendChild(el('th', 'tc', 'Total'));
+    thead.appendChild(hr); t.appendChild(thead);
+    const tb = el('tbody'); let lastProv = null;
+    emps.forEach((e) => {
+      if (provOf.get(e) !== lastProv) {
+        lastProv = provOf.get(e);
+        const pr = el('tr', 'prov'); const td = el('td', 'emp', lastProv); pr.appendChild(td);
+        const rest = el('td'); rest.colSpan = cols.length + 1; pr.appendChild(rest); tb.appendChild(pr);
+      }
+      const tr = el('tr');
+      const te = el('td', 'emp', e); te.title = 'Filtrar por ' + e; te.addEventListener('click', () => dash.setParams({ prov: provOf.get(e), emp: e, etapa: null })); tr.appendChild(te);
+      cols.forEach((c) => {
+        const v = val(A.m, e, c);
+        const td = el('td', 'c' + (v ? '' : ' zero')); td.appendChild(document.createTextNode(v ? fmtN(v) : '·'));
+        if (v && c !== 'sf') td.style.background = `rgba(var(--nt-heat), ${0.06 + 0.5 * v / max})`;
+        if (B) { const d = delta(v - val(B.m, e, c)); if (d) td.appendChild(d); }
+        tr.appendChild(td);
+      });
+      const tt = el('td', 'tc'); tt.appendChild(document.createTextNode(fmtN(rowTot(A.m, e))));
+      if (B) { const d = delta(rowTot(A.m, e) - rowTot(B.m, e)); if (d) tt.appendChild(d); }
+      tr.appendChild(tt); tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    const tf = el('tfoot'); const fr = el('tr'); fr.appendChild(el('td', 'emp', 'Total'));
+    const colTot = (S, c) => (S ? S.pend.filter((r) => (c === 'sf' ? !r._d : r._d && r._d.getUTCFullYear() === c)).length : 0);
+    cols.forEach((c) => { const td = el('td', 'c', fmtN(colTot(A, c))); if (B) { const d = delta(colTot(A, c) - colTot(B, c)); if (d) td.appendChild(d); } fr.appendChild(td); });
+    const gt = el('td', 'tc', fmtN(A.pend.length)); if (B) { const d = delta(A.pend.length - B.pend.length); if (d) gt.appendChild(d); } fr.appendChild(gt);
+    tf.appendChild(fr); t.appendChild(tf);
+    host.appendChild(t);
+  });
+
+  // Reporte por emprendimiento y etapa (como planilla)
+  function fechaTxt(rs) {
+    const ds = Array.from(new Set(rs.filter((r) => r._d).map((r) => r.fecha))).sort();
+    const sf = rs.filter((r) => !r._d).length;
+    if (!ds.length) return { t: 'Sin fecha', sinf: true, key: '' };
+    const f = (s) => fmtDate(new Date(s + 'T00:00:00Z'));
+    let t = ds.length === 1 ? f(ds[0]) : f(ds[0]) + ' – ' + f(ds[ds.length - 1]);
+    if (sf) t += ' · ' + sf + ' sin fecha';
+    return { t, sinf: false, key: ds.join('|'), multi: ds.length > 1 };
+  }
+  dash.draw('reporte', (host) => {
+    host.replaceChildren();
+    const f = NT.filtered(); if (!f) return;
+    if (!f.length) { host.appendChild(el('p', 'nt-empty', 'No hay viviendas para estos filtros.')); return; }
+    const p = dash.params(), pf = NT.prevFiltered();
+    const prevBy = pf ? d3.group(pf, (r) => r.emprendimiento, (r) => r.etapa) : null;
+    const byEmp = d3.groups(f, (r) => r.emprendimiento).sort((a, b) => a[1][0].provincia.localeCompare(b[1][0].provincia) || NT.sortEmp(a[0], b[0]));
+    const estados = [
+      ['Disponible', (r) => r.razon === 'Disponible'],
+      ['Adjudicado', (r) => r.razon === 'Adjudicado'],
+      ['Reservado', (r) => NT.RESERV.has(r.razon)],
+      ['No disp.', (r) => r.razon === 'No Disponible'],
+    ];
+    if (p.hist) estados.push(['Escriturado', (r) => r.razon === 'Escriturado'], ['Entregado', (r) => r.razon === 'Entregado']);
+    const frag = document.createDocumentFragment();
+    byEmp.forEach(([emp, rs]) => {
+      const card = el('article', 'nt-rep-card');
+      const head = el('div', 'nt-rep-head');
+      const h3 = el('h3', null, emp); h3.appendChild(el('span', 'prov', rs[0].provincia)); head.appendChild(h3);
+      const etapas = d3.groups(rs, (r) => r.etapa).sort((a, b) => (d3.min(a[1], (r) => r._d) || Infinity) - (d3.min(b[1], (r) => r._d) || Infinity) || a[0].localeCompare(b[0], 'es', { numeric: true }));
+      head.appendChild(el('span', 'nt-badge', fmtN(rs.length) + ' viviendas · ' + etapas.length + (etapas.length === 1 ? ' etapa' : ' etapas')));
+      card.appendChild(head);
+      const tipos = NT.TIPOS.filter((t) => rs.some((r) => r.tipo === t));
+      const wrap = el('div', 'nt-rep-wrap'); const t = el('table', 'nt-rep-t');
+      const hr = el('tr');
+      hr.appendChild(el('th', null, 'Etapa')); hr.appendChild(el('th', null, 'Fecha de entrega'));
+      hr.appendChild(el('th', 'num sep', 'Viviendas'));
+      tipos.forEach((tp) => hr.appendChild(el('th', 'num', NT.TIPO_LABEL[tp])));
+      estados.forEach(([lab]) => hr.appendChild(el('th', 'num', lab)));
+      const th = el('thead'); th.appendChild(hr); t.appendChild(th);
+      const tb = el('tbody');
+      const fila = (label, ers, prevErs, isTotal) => {
+        const tr = el('tr');
+        tr.appendChild(el('td', null, label));
+        const ft = fechaTxt(ers); const fd = el('td', ft.sinf ? 'sinf' : null, ft.t);
+        if (prevErs && !isTotal) { const pft = fechaTxt(prevErs); if (pft.key !== ft.key) fd.appendChild(el('span', 'nt-was', 'antes: ' + pft.t)); }
+        if (!prevErs && pf && !isTotal) fd.appendChild(el('span', 'nt-was', 'nueva en este corte'));
+        tr.appendChild(fd);
+        const vt = el('td', 'num sep tot', fmtN(ers.length));
+        if (pf) { const d = delta(ers.length - (prevErs ? prevErs.length : 0)); if (d) vt.appendChild(d); }
+        tr.appendChild(vt);
+        tipos.forEach((tp) => tr.appendChild(el('td', 'num', fmtN(ers.filter((r) => r.tipo === tp).length))));
+        estados.forEach(([, fn]) => { const n = ers.filter(fn).length; tr.appendChild(el('td', 'num mut', fmtN(n))); });
+        return tr;
+      };
+      etapas.forEach(([et, ers]) => tb.appendChild(fila(et, ers, prevBy && prevBy.get(emp) ? prevBy.get(emp).get(et) : null, false)));
+      t.appendChild(tb);
+      if (etapas.length > 1) {
+        const tf = el('tfoot'); const prevAll = prevBy && prevBy.get(emp) ? Array.from(prevBy.get(emp).values()).flat() : [];
+        tf.appendChild(fila('Total', rs, pf ? prevAll : null, true)); t.appendChild(tf);
+      }
+      wrap.appendChild(t); card.appendChild(wrap); frag.appendChild(card);
+    });
+    host.appendChild(frag);
+  });
 })();
 </script>
-</div>
+
+<script>
+/* Cambios entre cortes */
+(function () {
+  const { fmtN, fmtD, fmtCorte, fmtDate } = NT;
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const meses = (a, b) => (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth()) + (b.getUTCDate() - a.getUTCDate()) / 30;
+
+  let key = null, val = null;
+  function diff() {
+    const cur = NT.rows(), prev = NT.prevRows();
+    if (!cur || !prev) return null;
+    const p = dash.params(), k = JSON.stringify(p) + prev.length;
+    if (k === key) return val;
+    const ok = (r) => NT.match(r, p, null, true);
+    const byPrev = new Map(prev.map((r) => [r.id, r]));
+    const curIds = new Set();
+    const out = [];
+    cur.forEach((r) => {
+      curIds.add(r.id);
+      const o = byPrev.get(r.id);
+      if (!o) { if (ok(r)) out.push({ r, alta: true }); return; }
+      if (!ok(r) && !ok(o)) return;
+      const c = { r, o };
+      if (o.razon !== r.razon) {
+        c.estado = !NT.CERRADAS.has(o.razon) && NT.CERRADAS.has(r.razon) ? 'entregada'
+          : !NT.COMP.has(o.razon) && !NT.CERRADAS.has(o.razon) && NT.COMP.has(r.razon) ? 'compromiso'
+          : NT.COMP.has(o.razon) && r.razon === 'Disponible' ? 'liberada' : 'otro';
+      }
+      if (o.fecha !== r.fecha && !NT.CERRADAS.has(r.razon)) {
+        if (o._d && r._d) { c.meses = meses(o._d, r._d); c.fecha = c.meses > 0 ? 'postergada' : 'adelantada'; }
+        else c.fecha = r._d ? 'asignada' : 'quitada';
+      }
+      if (c.estado || c.fecha) out.push(c);
+    });
+    prev.forEach((o) => { if (!curIds.has(o.id) && ok(o)) out.push({ o, r: o, baja: true }); });
+    key = k; val = out;
+    return out;
+  }
+  const count = (d, fn) => d.filter(fn).length;
+  const put = (e, v) => { e.textContent = v; };
+
+  dash.draw('cmp-msg', (e) => {
+    const h = dash.data('historial'), c = dash.data('comparacion');
+    e.hidden = false;
+    if (h.status !== 'ok') { put(e, 'Cargando cortes…'); return; }
+    if (h.data.length < 2) { put(e, 'Hay un solo corte cargado (' + fmtCorte(h.data[0].corte) + '). La comparación aparece cuando se cargue el próximo export de Dynamics: cada actualización mensual o trimestral queda guardada como un corte nuevo.'); return; }
+    if (c.status === 'none') { put(e, 'Elegí arriba un corte para comparar con el actual.'); return; }
+    if (c.status !== 'ok') { put(e, 'Cargando el corte ' + fmtCorte(dash.params().cmp) + '…'); return; }
+    put(e, 'Cambios entre el ' + fmtCorte(c.corte) + ' y el ' + fmtCorte(h.data[h.data.length - 1].corte) + ', según los filtros de arriba (incluye entregadas y escrituradas).');
+  });
+  dash.draw('c-entregadas', (e) => { const d = diff(); put(e, d ? fmtN(count(d, (c) => c.estado === 'entregada')) : '—'); });
+  dash.draw('c-compromisos', (e) => { const d = diff(); put(e, d ? fmtN(count(d, (c) => c.estado === 'compromiso')) : '—'); });
+  dash.draw('c-post', (e) => { const d = diff(); put(e, d ? fmtN(count(d, (c) => c.fecha === 'postergada')) : '—'); });
+  dash.draw('c-adel', (e) => { const d = diff(); put(e, d ? fmtN(count(d, (c) => c.fecha === 'adelantada')) : '—'); });
+  const prom = (d, k) => { const xs = d.filter((c) => c.fecha === k).map((c) => Math.abs(c.meses)); return xs.length ? 'En promedio ' + d3.format('.1f')(d3.mean(xs)).replace('.', ',') + ' meses' : 'Ninguna'; };
+  dash.draw('c-post-m', (e) => { const d = diff(); put(e, d ? prom(d, 'postergada') : ''); });
+  dash.draw('c-adel-m', (e) => { const d = diff(); put(e, d ? prom(d, 'adelantada') : ''); });
+  dash.draw('c-altas', (e) => { const d = diff(); put(e, d ? '+' + fmtN(count(d, (c) => c.alta)) + ' / −' + fmtN(count(d, (c) => c.baja)) : '—'); });
+
+  // Evolución a partir del resumen guardado de cada corte
+  function resumen() {
+    const h = dash.data('historial'); if (h.status !== 'ok') return null;
+    const p = dash.params();
+    return h.data.map((c) => {
+      const idx = Object.fromEntries(c.resumen_cols.map((k, i) => [k, i]));
+      const rs = c.resumen.filter((x) => (!p.prov || x[idx.provincia] === p.prov) && (!p.emp || x[idx.emprendimiento] === p.emp) && (!p.tipo || x[idx.tipo] === p.tipo) && (!p.razon || x[idx.razon] === p.razon) && (!p.avance || x[idx.avance] === p.avance));
+      return { corte: c.corte, rs: rs.map((x) => ({ razon: x[idx.razon], anio: x[idx.anio], n: x[idx.n] })) };
+    });
+  }
+  const GRUPOS = [
+    { key: 'cerr', label: 'Entregadas y escrituradas', color: () => 'var(--cds-chart-muted)', fn: (r) => NT.CERRADAS.has(r) },
+    { key: 'comp', label: 'Comprometidas pendientes', color: () => dash.colors[1], fn: (r) => NT.COMP.has(r) },
+    { key: 'disp', label: 'Disponibles', color: () => '#FB7520', fn: (r) => r === 'Disponible' },
+    { key: 'otro', label: 'No disponibles y sin dato', color: () => dash.colors[4], fn: (r) => !NT.CERRADAS.has(r) && !NT.COMP.has(r) && r !== 'Disponible' },
+  ];
+  dash.draw('evo-legend', (e) => NTlegend(e, GRUPOS.map((g) => [g.label, g.color()])));
+  dash.draw('evolucion', (e) => {
+    const R = resumen(); if (!R) { e.replaceChildren(); return; }
+    const by = new Map(R.map((c) => [c.corte, c.rs]));
+    NTstacked(e, {
+      keys: R.map((c) => c.corte), label: 'Viviendas por estado en cada corte',
+      series: GRUPOS.map((g) => ({ key: g.key, label: g.label, color: g.color(), get: (k) => d3.sum(by.get(k).filter((x) => g.fn(x.razon)), (x) => x.n) })),
+      tickText: (ks, x) => ks.map((k) => ({ x: x(k) + Math.min(x.bandwidth(), 64) / 2, t: fmtCorte(k), anchor: 'middle' })),
+      tipTitle: (k) => 'Corte del ' + fmtCorte(k),
+    });
+  });
+  dash.draw('anios-legend', (e) => { const R = resumen(); if (!R) { e.replaceChildren(); return; } NTlegend(e, R.map((c, i) => [fmtCorte(c.corte), i === R.length - 1 ? '#FB7520' : 'var(--cds-chart-muted)'])); });
+  dash.draw('anios-cortes', (e) => {
+    e.replaceChildren();
+    const R = resumen(); if (!R) return;
+    const series = R.map((c) => {
+      const m = d3.rollup(c.rs.filter((x) => NT.COMP.has(x.razon) && x.anio), (v) => d3.sum(v, (x) => x.n), (x) => x.anio);
+      return { corte: c.corte, m };
+    });
+    const years = Array.from(new Set(series.flatMap((s) => Array.from(s.m.keys())))).sort((a, b) => a - b);
+    if (!years.length) { e.textContent = 'No hay viviendas comprometidas con fecha para estos filtros.'; return; }
+    const W = Math.max(280, e.clientWidth || 600), H = 240;
+    const ymax = d3.max(series, (s) => d3.max(years, (y) => s.m.get(y) || 0)) || 1;
+    const svg = d3.select(e).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Compromisos por año según cada corte');
+    const y = d3.scaleLinear([0, ymax], [H - 24, 10]).nice();
+    const ya = svg.append('g').call(d3.axisLeft(y).ticks(5).tickSize(0).tickFormat(d3.format('~s')));
+    ya.attr('font-size', null).attr('font-family', null); ya.select('.domain').remove();
+    ya.selectAll('text').style('fill', 'var(--color-fg-muted)').style('font-size', '12px');
+    let ml = 0; ya.selectAll('text').each(function () { ml = Math.max(ml, this.getComputedTextLength()); }); ml += 10; ya.attr('transform', `translate(${ml - 4},0)`);
+    const x = d3.scalePoint(years, [ml + 12, W - 16]);
+    svg.insert('g', ':first-child').selectAll('line').data(y.ticks(5)).join('line').attr('x1', ml).attr('x2', W - 4).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).style('stroke', 'var(--cds-chart-grid)');
+    const step = Math.ceil(years.length / Math.max(1, Math.floor((W - ml) / 44)));
+    svg.append('g').selectAll('text').data(years.filter((_, i) => i % step === 0)).join('text').attr('x', (d) => x(d)).attr('y', H - 6).attr('text-anchor', 'middle').style('fill', 'var(--color-fg-muted)').style('font-size', '12px').text((d) => d);
+    series.forEach((s, i) => {
+      const last = i === series.length - 1;
+      const col = last ? '#FB7520' : 'var(--cds-chart-muted)';
+      const pts = years.map((yy) => [yy, s.m.get(yy) || 0]);
+      svg.append('path').attr('d', d3.line().x((d) => x(d[0])).y((d) => y(d[1]))(pts)).style('fill', 'none').style('stroke', col).attr('stroke-width', last ? 2.5 : 1.5).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
+      svg.append('g').selectAll('circle').data(pts).join('circle').attr('cx', (d) => x(d[0])).attr('cy', (d) => y(d[1])).attr('r', last ? 3.5 : 2.5).style('fill', col);
+    });
+    const t = NTtip.tip(e);
+    svg.append('g').selectAll('rect').data(years).join('rect').attr('x', (d) => x(d) - x.step() / 2).attr('width', x.step()).attr('y', 0).attr('height', H - 24).style('fill', 'transparent')
+      .on('pointermove', (ev, yy) => { NTtip.fillTip(t, 'Entregas planificadas en ' + yy, series.slice().reverse().map((s, i) => ['Corte ' + fmtCorte(s.corte), s.m.get(yy) || 0, i === 0 ? '#FB7520' : 'var(--cds-chart-muted)'])); NTtip.placeTip(t, e, ev); })
+      .on('pointerleave', () => { t.hidden = true; });
+  });
+
+  dash.draw('cambios-emp', (tb) => {
+    tb.replaceChildren();
+    const d = diff(); if (!d) return;
+    const p = dash.params(), cur = NT.rows(), prev = NT.prevRows();
+    const pend = (rs) => d3.rollup(rs.filter((r) => !NT.CERRADAS.has(r.razon) && NT.match(r, p, null, true)), (v) => v.length, (r) => r.emprendimiento);
+    const pa = pend(prev), pn = pend(cur);
+    const g = d3.group(d, (c) => c.r.emprendimiento);
+    const emps = Array.from(new Set([...g.keys(), ...pa.keys(), ...pn.keys()])).sort(NT.sortEmp);
+    emps.forEach((e) => {
+      const cs = g.get(e) || [];
+      if (!cs.length && !pa.get(e) && !pn.get(e)) return;
+      const tr = el('tr');
+      tr.appendChild(el('td', null, e));
+      [(c) => c.estado === 'entregada', (c) => c.estado === 'compromiso', (c) => c.estado === 'liberada', (c) => c.fecha === 'postergada', (c) => c.fecha === 'adelantada']
+        .forEach((fn) => { const n = cs.filter(fn).length; const td = el('td', 'num', n ? fmtN(n) : '·'); if (!n) td.style.color = 'var(--color-fg-muted)'; tr.appendChild(td); });
+      tr.appendChild(el('td', 'num', fmtN(pa.get(e) || 0)));
+      const now = pn.get(e) || 0, dd = now - (pa.get(e) || 0);
+      const td = el('td', 'num'); td.appendChild(document.createTextNode(fmtN(now))); if (dd) { const s = el('span', 'nt-d ' + (dd > 0 ? 'up' : 'down'), fmtD(dd)); s.style.display = 'inline'; s.style.marginLeft = '6px'; td.appendChild(s); }
+      tr.appendChild(td); tb.appendChild(tr);
+    });
+  });
+
+  const search = document.getElementById('c-search');
+  search.addEventListener('input', () => { dash.draw('cambios-detalle'); dash.draw('cambios-count'); });
+  function lista() {
+    const d = diff(); if (!d) return null;
+    const term = search.value.trim().toLowerCase();
+    return d.filter((c) => !term || (c.r.nombre + ' ' + c.r.emprendimiento + ' ' + c.r.etapa).toLowerCase().includes(term))
+      .sort((a, b) => NT.sortEmp(a.r.emprendimiento, b.r.emprendimiento) || a.r.etapa.localeCompare(b.r.etapa) || a.r.nombre.localeCompare(b.r.nombre, 'es', { numeric: true }));
+  }
+  dash.draw('cambios-count', (e) => { const l = lista(); e.textContent = l ? fmtN(l.length) + ' unidades con cambios' + (l.length > NT.LIMIT ? '; se muestran las primeras ' + fmtN(NT.LIMIT) + '.' : '.') : ''; });
+  const f = (r) => (r && r._d ? fmtDate(r._d) : 'Sin fecha');
+  dash.draw('cambios-detalle', (tb) => {
+    tb.replaceChildren();
+    const l = lista(); if (!l) return;
+    const frag = document.createDocumentFragment();
+    l.slice(0, NT.LIMIT).forEach((c) => {
+      const tr = el('tr');
+      tr.appendChild(el('td', null, c.r.emprendimiento));
+      tr.appendChild(el('td', null, c.r.nombre));
+      tr.appendChild(el('td', 'nt-hide-sm', c.r.etapa));
+      const es = el('td'), fe = el('td');
+      if (c.alta) { es.appendChild(el('b', null, 'Alta · ')); es.appendChild(el('span', null, c.r.razon)); fe.textContent = f(c.r); }
+      else if (c.baja) { es.appendChild(el('b', null, 'Ya no figura · ')); es.appendChild(el('span', null, 'era ' + c.o.razon)); fe.textContent = f(c.o); }
+      else {
+        if (c.estado) { es.appendChild(el('span', null, c.o.razon)); es.appendChild(el('span', 'nt-arrow', '→')); const s = el('span', 'nt-pill', c.r.razon); s.style.color = NT.color(c.r.razon); es.appendChild(s); }
+        else { es.textContent = c.r.razon; es.style.color = 'var(--color-fg-muted)'; }
+        if (c.fecha) {
+          fe.appendChild(el('span', null, f(c.o))); fe.appendChild(el('span', 'nt-arrow', '→')); const s = el('b', null, f(c.r)); fe.appendChild(s);
+          if (c.meses) { const m = el('span', 'nt-d ' + (c.meses > 0 ? 'down' : 'up'), (c.meses > 0 ? '+' : '−') + d3.format('.1f')(Math.abs(c.meses)).replace('.', ',') + ' meses'); fe.appendChild(m); }
+        } else { fe.textContent = f(c.r); fe.style.color = 'var(--color-fg-muted)'; }
+      }
+      tr.appendChild(es); tr.appendChild(fe); frag.appendChild(tr);
+    });
+    tb.appendChild(frag);
+  });
+})();
+</script>
 </body>
 </html>
