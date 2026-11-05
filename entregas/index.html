@@ -119,6 +119,12 @@
 .nt-et::before { content: "▸"; color: var(--nt-orange); font-size: 12px; line-height: 1.6; transition: transform 150ms ease-out; }
 .nt-et[aria-expanded="true"]::before { transform: rotate(90deg); }
 .nt-et:hover { text-decoration: underline; text-underline-offset: 3px; }
+.nt-av-box { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 0 18px; }
+.nt-av { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 8px; white-space: nowrap; border: 1px solid currentColor; }
+.nt-av.pozo { color: var(--nt-orange-txt); background: rgba(var(--nt-heat), .10); }
+.nt-av.obra { color: var(--s2); background: color-mix(in srgb, var(--s2) 12%, transparent); }
+.nt-av.fin { color: var(--color-ok); background: color-mix(in srgb, var(--color-ok) 12%, transparent); }
+.nt-av.otro { color: var(--color-fg-muted); }
 .nt-et:focus-visible { outline: 3px solid var(--nt-orange); outline-offset: 2px; }
 .nt-rep-t tr.abierta td { background: rgba(var(--nt-heat), .07); border-bottom-color: transparent; }
 .nt-rep-t tr.nt-comp-row > td { padding: 0 0 12px; background: rgba(var(--nt-heat), .07); }
@@ -293,7 +299,7 @@
     </div>
     <div class="nt-card" id="reporte">
       <h2>Reporte por emprendimiento y etapa</h2>
-      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por estilo de producto y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas. <b>Tocá una etapa</b> para ver qué la compone: estilos, dormitorios, estados y la lista de unidades.</p>
+      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por estilo de producto y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas. Al lado de cada etapa se ve su avance de obra (Pozo, En construcción o Terminado). <b>Tocá una etapa</b> para ver qué la compone: estilos, dormitorios, estados y la lista de unidades.</p>
     </div>
     <div class="nt-rep" data-draw="reporte"></div>
     <div class="nt-card" id="detalle">
@@ -786,6 +792,19 @@
     if (sf) t += ' · ' + sf + ' sin fecha';
     return { t, sinf: false, key: ds.join('|'), multi: ds.length > 1 };
   }
+  // Avance de obra de la etapa (columna "Avance de Obra"): un sello por valor; si se mezclan, con su cantidad
+  const AVANCE = { 'Pozo': ['Pozo', 'pozo'], 'En Construccion': ['En construcción', 'obra'], 'Terminado': ['Terminado', 'fin'] };
+  function avanceChips(ers) {
+    const box = el('span', 'nt-av-box');
+    const c = d3.rollups(ers, (v) => v.length, (r) => r.avance).sort((a, b) => b[1] - a[1]);
+    c.forEach(([a, n]) => {
+      const [lab, cls] = AVANCE[a] || [a, 'otro'];
+      const chip = el('span', 'nt-av ' + cls, c.length > 1 ? lab + ' ' + n : lab);
+      chip.title = 'Avance de obra: ' + lab + ' (' + n + (n === 1 ? ' vivienda)' : ' viviendas)');
+      box.appendChild(chip);
+    });
+    return box;
+  }
   const ABIERTAS = new Set();   // etapas desplegadas (emprendimiento|etapa); se mantienen al cambiar filtros
   const DORMS = ['1 dorm.', '2 dorm.', '3 dorm.', '4 dorm.', '5 dorm.', 'Sin dato'];
   function cruce(ers, filaKey, filaOrden, colKey, colOrden, titulo) {
@@ -885,7 +904,7 @@
           const td = el('td'); const b = el('button', 'nt-et', label); b.type = 'button';
           b.setAttribute('aria-expanded', String(open)); b.title = open ? 'Ocultar el detalle de la etapa' : 'Ver qué compone la etapa';
           b.addEventListener('click', () => { if (ABIERTAS.has(k)) ABIERTAS.delete(k); else ABIERTAS.add(k); dash.draw('reporte'); });
-          td.appendChild(b); tr.appendChild(td);
+          td.appendChild(b); td.appendChild(avanceChips(ers)); tr.appendChild(td);
           if (open) tr.classList.add('abierta');
         }
         const ft = fechaTxt(ers); const fd = el('td', ft.sinf ? 'sinf' : null, ft.t);
