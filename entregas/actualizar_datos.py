@@ -38,7 +38,7 @@ def etapa(r):
 
 
 def corte_desde_nombre(nombre):
-    m = re.search(r'(\d{1,2})-(\d{1,2})-(\d{4})', nombre)
+    m = re.search(r'(\d{1,2})[-_.](\d{1,2})[-_.](\d{4})', nombre)
     return f'{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}' if m else None
 
 

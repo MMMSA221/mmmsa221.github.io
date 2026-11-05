@@ -39,7 +39,7 @@ Todo se publica con GitHub Pages bajo el mismo dominio, así que todas las pági
 
 ### Actualizar Entregas de viviendas (mensual o trimestral)
 
-1. Bajar de Dynamics el export "Stock Productos NATANIA y MA" (.xlsx), con la fecha en el nombre (`..._dd-mm-aaaa_...`).
+1. Bajar de Dynamics el export "Stock Productos NATANIA y MA" (.xlsx), con la fecha en el nombre (`dd-mm-aaaa` o `dd_mm_aaaa`).
 2. `python entregas/actualizar_datos.py "Stock_Productos_NATANIA_Y_MA_dd-mm-aaaa.xlsx"` (o pasarle el Excel a Claude). Si el nombre no trae la fecha: `--corte AAAA-MM-DD`.
 3. Subir a `main` el archivo nuevo de `entregas/historial/` y el `index.json` actualizado.
 
