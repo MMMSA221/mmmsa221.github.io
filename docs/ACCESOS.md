@@ -16,8 +16,8 @@ Todo se administra en Supabase (proyecto de Herramientas) → **SQL Editor**. La
 
 | Grupo | Quiénes | Ve |
 |---|---|---|
-| `produccion` | Proyecto, gestiones, obra, planificación y costos | Cabida, Simulador, Licitaciones, Loteos |
-| `comercial` | Administración, comercial, Natania Directa, pre entrega | Loteos |
+| `produccion` | Proyecto, gestiones, obra, planificación y costos | Cabida, Simulador, Licitaciones, Loteos, Entregas |
+| `comercial` | Administración, comercial, Natania Directa, pre entrega | Loteos, Entregas |
 | `proyeccion` | Proyección de inversiones | Simulador |
 
 Los miembros se cargan por SQL (no se guardan en este repo, que es público).
@@ -79,7 +79,7 @@ La persona ve el cambio al volver a ingresar, o sola en menos de una hora.
    <script src="/sesion.js"></script>
    <script>ECI.exigir('obras');</script>
    ```
-3. En `index.html` del hall, sumar la tarjeta a `HERRAMIENTAS` con `herr: 'obras'` y una letra libre (el plano dibuja A a D; para más lotes hay que ampliar el SVG).
+3. En `index.html` del hall, sumar la tarjeta a `HERRAMIENTAS` con `herr: 'obras'` y una letra libre (el plano dibuja A a E; para más lotes hay que ampliar el SVG).
 4. En Supabase: `insert into admin.herramientas values ('obras', 'Nombre visible');` y agregarla a los grupos que correspondan.
 
 ## Límites a tener en cuenta

@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entregas de viviendas · Grupo ECIPSA</title>
+<meta name="description" content="Fechas de entrega planificadas de las viviendas de los emprendimientos Natania.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M6 3h20l3 3v20l-3 3H6l-3-3V6z' fill='%2328283D'/><path d='M6 3h10v13H3V6z' fill='%23FB7520'/></svg>">
+<link rel="stylesheet" href="/eci.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/sesion.js"></script>
+<script>ECI.exigir('entregas');</script>
+<style>
+/* Tokens del tablero, tomados del sistema visual del hall (eci.css): siguen su modo claro/oscuro. */
+:root {
+  --color-bg: var(--fondo); --color-panel: var(--hoja); --color-fg: var(--tinta); --color-fg-muted: var(--suave);
+  --color-border-line: var(--linea); --color-bad: var(--error); --color-ok: var(--ok);
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 16px; --cds-gap-lg: 24px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 16px; --cds-pad-lg: 24px;
+  --cds-radius: 12px; --cds-font-size-caption: 12.5px; --cds-font-size-body: 14.5px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px;
+  --cds-font-weight-medium: 600;
+  --cds-chart-grid: rgba(40,40,61,.08); --cds-chart-axis: rgba(40,40,61,.35); --cds-chart-muted: #c3c3c8;
+  --cds-surface-popover: var(--hoja); --cds-border: var(--linea); --cds-shadow-popover: 0 4px 12px rgba(0,0,0,.12);
+  --cds-text-secondary: var(--suave); --cds-dur-slow: 250ms;
+  --font-anthropic-sans: var(--cuerpo); --font-anthropic-serif: var(--tit);
+  --s1: #28283D; --s2: #3E7CB1; --s3: #9B08BF; --s4: #2E8B57; --s5: #8A8A93; --s6: #C9530A;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --cds-chart-grid: rgba(242,242,245,.08); --cds-chart-axis: rgba(242,242,245,.35); --cds-chart-muted: #5d5d72;
+  --s1: #C9C9E6; --s2: #7FB3E0; --s3: #D07BE8; --s4: #6CCB94; --s5: #9a9aab; --s6: #F0A060; } }
+:root[data-theme="dark"] {
+  --cds-chart-grid: rgba(242,242,245,.08); --cds-chart-axis: rgba(242,242,245,.35); --cds-chart-muted: #5d5d72;
+  --s1: #C9C9E6; --s2: #7FB3E0; --s3: #D07BE8; --s4: #6CCB94; --s5: #9a9aab; --s6: #F0A060; }
+#dash-root { padding: 24px max(16px, env(safe-area-inset-left, 0px)) 48px max(16px, env(safe-area-inset-right, 0px)); }
+.nt-head h1 { font-weight: 800 !important; letter-spacing: -.01em; color: var(--tinta); line-height: 1.15; }
+.nt-volver { margin-left: auto; font-size: 14px; }
+</style>
+</head>
+<body>
+<header class="eci-barra">
+  <div class="eci-barra-in">
+    <a class="eci-marca" href="/" aria-label="Grupo ECIPSA, volver al hall"><span class="g">GRUPO</span><span class="e"><b>E</b>CIPSA</span></a>
+    <span class="eci-ruta">Entregas de viviendas</span>
+    <div class="eci-usuario"><span class="nombre" id="uNom"></span><a class="eci-link" href="/">Herramientas</a><button class="eci-link" id="bSalir" type="button">Salir</button></div>
+  </div>
+</header>
+<script src="d3.min.js"></script>
+<script src="datos.js"></script>
+<script>
+/* Reemplazo mínimo de la API del tablero: lee window.DATOS (datos.js) y calcula todo en el navegador. */
+(function () {
+  const D = window.DATOS || {};
+  const DEF = { prov: '', emp: '', etapa: '', tipo: '', estilo: '', razon: '', hist: false };
+  let params = { ...DEF };
+  const listeners = [], draws = {};
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  function runDraw(name) { document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => { try { draws[name](el); } catch (e) { console.error(name, e); } }); }
+  function fire() { listeners.forEach((f) => f()); Object.keys(draws).forEach(runDraw); }
+  window.dash = {
+    data: (id) => ({ status: D[id] ? 'ok' : 'error', data: D[id] || [], meta: [] }),
+    onData: (fn) => { listeners.push(fn); fn(); },
+    draw: (name, fn) => { if (fn) draws[name] = fn; if (draws[name] && document.readyState !== 'loading') runDraw(name); },
+    params: () => ({ ...params }),
+    setParams: (p) => { Object.keys(p).forEach((k) => { params[k] = p[k] == null ? DEF[k] : p[k]; }); fire(); },
+    resetParams: () => { params = { ...DEF }; fire(); },
+    get colors() { return ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6', '--s1', '--s2'].map(css); },
+  };
+  window.dashFire = fire;
+  let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(fire, 150); });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', fire);
+  document.addEventListener('DOMContentLoaded', fire);
+  ECI.listo.then(({ usuario }) => { const n = document.getElementById('uNom'); if (n) n.textContent = usuario.nombre; });
+  document.getElementById('bSalir').addEventListener('click', () => ECI.salir());
+})();
+</script>
+<div id="dash-root">
+<style>
+  .nt { --nt-orange: #FB7520; display: flex; flex-direction: column; gap: var(--cds-gap-lg); font-family: "Open Sans", var(--font-anthropic-sans); max-width: 1280px; margin-inline: auto; }
+  .nt-head { display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+  .nt-eyebrow { font-size: var(--cds-font-size-caption); letter-spacing: .08em; text-transform: uppercase; color: var(--color-fg-muted); font-weight: 600; }
+  .nt-eyebrow i { font-style: normal; color: var(--nt-orange); }
+  .nt-head h1 { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); text-wrap: balance; }
+  .nt-lead { margin: 0; color: var(--color-fg-muted); max-width: 70ch; line-height: 1.5; }
+  .nt-lead b { color: var(--color-fg); font-weight: 600; }
+  .nt-filters { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); align-items: flex-end; padding: var(--cds-pad-md); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+  .nt-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 10rem; }
+  .nt-field label, .nt-check { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .nt-field select { min-height: 36px; max-width: 100%; font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 0 var(--cds-pad-sm); }
+  .nt-check { display: flex; align-items: center; gap: 6px; min-height: 36px; flex: 1 1 14rem; cursor: pointer; }
+  .nt-check input { accent-color: var(--nt-orange); width: 16px; height: 16px; }
+  .nt-btn { min-height: 36px; padding: 0 var(--cds-pad-md); font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: transparent; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); cursor: pointer; }
+  .nt-btn:hover { border-color: var(--nt-orange); }
+  .nt :is(select, button, input, th button):focus-visible { outline: 3px solid var(--nt-orange); outline-offset: 2px; }
+  .nt-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: var(--cds-gap-md); }
+  .nt-kpi { padding: var(--cds-pad-md) var(--cds-pad-lg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); display: flex; flex-direction: column; gap: 4px; }
+  .nt-kpi span { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .nt-kpi strong { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .nt-kpi.is-alert strong { color: var(--color-bad); }
+  .nt-kpi.is-alert { border-top: 3px solid var(--color-bad); }
+  .nt-kpi.is-soon { border-top: 3px solid var(--nt-orange); }
+  .nt-card { position: relative; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-sm); min-width: 0; }
+  .nt-card h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+  .nt-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.5; }
+  .nt-legend { display: flex; flex-wrap: wrap; gap: 4px var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-height: 18px; }
+  .nt-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .nt-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .nt-chart { position: relative; min-height: 260px; }
+  .nt-axis { min-height: 28px; }
+  .nt-scroll { position: relative; max-height: 600px; overflow: auto; border-top: 1px solid var(--color-border-line); }
+  .nt-timeline { position: relative; min-height: 200px; }
+  .nt-tip { position: absolute; pointer-events: none; z-index: 5; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); line-height: 1.45; max-width: 280px; }
+  .nt-tip .t { color: var(--cds-text-secondary); margin-bottom: 2px; }
+  .nt-tip .r { display: flex; align-items: center; gap: 6px; }
+  .nt-tip .r i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: none; }
+  .nt-tip .r b { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .nt-search { min-height: 36px; font: inherit; color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 0 var(--cds-pad-sm); width: min(100%, 22rem); }
+  .nt-tablebox { max-height: 520px; overflow: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+  .nt-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .nt-table th { position: sticky; top: 0; background: var(--color-panel); text-align: left; padding: 0; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; z-index: 1; }
+  .nt-table th button { all: unset; display: block; cursor: pointer; padding: 8px 10px; font-weight: 600; color: var(--color-fg); }
+  .nt-table th[aria-sort="ascending"] button::after { content: " ↑"; color: var(--nt-orange); }
+  .nt-table th[aria-sort="descending"] button::after { content: " ↓"; color: var(--nt-orange); }
+  .nt-table td { padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+  .nt-table td:nth-child(3) { min-width: 16rem; }
+  .nt-pill { display: inline-block; padding: 1px 8px; border-radius: 8px; font-weight: 600; font-size: 11px; white-space: nowrap; border: 1px solid currentColor; }
+  .nt-late { color: var(--color-bad); font-weight: 600; }
+  .nt-tl-label { cursor: pointer; }
+  .nt-tl-label:hover { text-decoration: underline; }
+  [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+  @media (max-width: 640px) { .nt-hide-sm { display: none; } }
+</style>
+
+<div class="nt" id="top">
+  <header class="nt-head">
+    <div class="nt-eyebrow">Natania · Export de stock de Dynamics del <span id="corte">—</span></div>
+    <h1>Entregas de viviendas Natania</h1>
+    <p class="nt-lead"><b data-draw="lead-n" data-source="viviendas">—</b> viviendas en la vista. La próxima fecha de entrega planificada es <b data-draw="lead-next" data-source="viviendas">—</b>, en <b data-draw="lead-next-emp" data-source="viviendas">—</b>. <b data-draw="lead-late" data-source="viviendas">—</b> unidades tienen la fecha ya cumplida y siguen sin entregar.</p>
+  </header>
+
+  <section class="nt-filters" id="filtros" aria-label="Filtros">
+    <div class="nt-field"><label for="f-prov">Provincia</label><select id="f-prov" data-draw="sel-prov" data-source="viviendas"></select></div>
+    <div class="nt-field"><label for="f-emp">Emprendimiento</label><select id="f-emp" data-draw="sel-emp" data-source="viviendas"></select></div>
+    <div class="nt-field"><label for="f-etapa">Etapa</label><select id="f-etapa" data-draw="sel-etapa" data-source="viviendas"></select></div>
+    <div class="nt-field"><label for="f-tipo">Tipo de vivienda</label><select id="f-tipo" data-draw="sel-tipo" data-source="viviendas"></select></div>
+    <div class="nt-field"><label for="f-estilo">Estilo de producto</label><select id="f-estilo" data-draw="sel-estilo" data-source="viviendas"></select></div>
+    <div class="nt-field"><label for="f-razon">Razón para el estado</label><select id="f-razon" data-draw="sel-razon" data-source="viviendas"></select></div>
+    <label class="nt-check" for="f-hist"><input type="checkbox" id="f-hist"> Incluir entregadas y escrituradas</label>
+    <button type="button" class="nt-btn" id="f-reset">Limpiar filtros</button>
+  </section>
+
+  <section class="nt-kpis" id="resumen" aria-label="Resumen">
+    <div class="nt-kpi"><span>Viviendas en la vista</span><strong data-draw="k-total" data-source="viviendas">—</strong></div>
+    <div class="nt-kpi is-alert"><span>Fecha cumplida, sin entregar</span><strong data-draw="k-late" data-source="viviendas">—</strong></div>
+    <div class="nt-kpi is-soon"><span>Entregas en los próximos 12 meses</span><strong data-draw="k-12m" data-source="viviendas">—</strong></div>
+    <div class="nt-kpi"><span>Sin fecha planificada</span><strong data-draw="k-nodate" data-source="viviendas">—</strong></div>
+  </section>
+
+  <section class="nt-card" id="por-trimestre">
+    <h2>Unidades por trimestre de entrega</h2>
+    <p class="nt-note">Fecha Entrega Planificada (técnica), agrupada por trimestre y apilada por razón para el estado. La línea naranja marca hoy.</p>
+    <div class="nt-legend" data-draw="legend" data-source="viviendas"></div>
+    <div class="nt-chart" data-draw="quarters" data-source="viviendas"></div>
+  </section>
+
+  <section class="nt-card" id="linea-de-tiempo">
+    <h2>Línea de tiempo por emprendimiento y etapa</h2>
+    <p class="nt-note">Cada punto es una fecha de entrega; el tamaño indica cuántas viviendas vencen ese día y el color, la razón para el estado predominante. Pasá el cursor para ver el detalle por estado, estilo y tipo. Tocá el nombre de un emprendimiento para filtrarlo. Los departamentos sin etapa se agrupan por torre o edificio.</p>
+    <div class="nt-axis" data-draw="tl-axis" data-source="viviendas"></div>
+    <div class="nt-scroll"><div class="nt-timeline" data-draw="timeline" data-source="viviendas"></div></div>
+  </section>
+
+  <section class="nt-card" id="detalle">
+    <h2>Detalle de viviendas</h2>
+    <p class="nt-note">Una fila por unidad. Ordená tocando el encabezado de cada columna. <span data-draw="table-count" data-source="viviendas">—</span></p>
+    <input type="search" id="t-search" class="nt-search" placeholder="Buscar unidad, emprendimiento, etapa…" aria-label="Buscar en el detalle">
+    <div class="nt-tablebox">
+      <table class="nt-table" data-source="viviendas" data-row-key="id">
+        <thead><tr>
+          <th data-field="fecha" aria-sort="ascending"><button type="button" data-sort="fecha">Fecha entrega</button></th>
+          <th data-field="emprendimiento"><button type="button" data-sort="emprendimiento">Emprendimiento</button></th>
+          <th data-field="nombre"><button type="button" data-sort="nombre">Unidad</button></th>
+          <th data-field="etapa"><button type="button" data-sort="etapa">Etapa</button></th>
+          <th data-field="tipo" class="nt-hide-sm"><button type="button" data-sort="tipo">Tipo</button></th>
+          <th data-field="estilo"><button type="button" data-sort="estilo">Estilo</button></th>
+          <th data-field="razon"><button type="button" data-sort="razon">Razón para el estado</button></th>
+          <th data-field="avance" class="nt-hide-sm"><button type="button" data-sort="avance">Avance de obra</button></th>
+          <th data-field="provincia" class="nt-hide-sm"><button type="button" data-sort="provincia">Provincia</button></th>
+        </tr></thead>
+        <tbody data-draw="table"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const RAZONES = ['Disponible', 'Reservado SAAT', 'Reservado-Canje', 'Reservado', 'Directorio - Reservado', 'Adjudicado', 'No Disponible', 'Escriturado', 'Entregado', 'Sin dato'];
+  const CERRADAS = new Set(['Entregado', 'Escriturado']);
+  const LIMIT = 1500;
+  const parse = (s) => (s ? new Date(s + 'T00:00:00Z') : null);
+  const fmtDate = (d) => new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+  const fmtMonth = (d) => new Intl.DateTimeFormat('es-AR', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+  const fmtN = (n) => new Intl.NumberFormat('es-AR').format(n);
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  const in12 = new Date(today); in12.setUTCFullYear(in12.getUTCFullYear() + 1);
+  const empNum = (e) => { const m = /Natania\s*(\d+)/i.exec(e); return m ? +m[1] : 999; };
+
+  function color(r) {
+    const c = dash.colors;
+    const map = {
+      'Disponible': '#FB7520', 'Reservado SAAT': c[0], 'Reservado-Canje': c[2], 'Reservado': c[2], 'Directorio - Reservado': c[2],
+      'Adjudicado': c[1], 'No Disponible': c[4], 'Escriturado': c[6], 'Entregado': 'var(--cds-chart-muted)', 'Sin dato': 'var(--cds-chart-muted)'
+    };
+    return map[r] || c[5];
+  }
+
+  let cacheKey = null, cache = null;
+  function rows() {
+    const g = dash.data('viviendas');
+    if (g.status !== 'ok') return null;
+    return g.data.map((r) => r._d !== undefined ? r : Object.assign(r, { _d: parse(r.fecha) }));
+  }
+  function match(r, p, skip) {
+    if (!p.hist && CERRADAS.has(r.razon)) return false;
+    if (skip !== 'prov' && p.prov && r.provincia !== p.prov) return false;
+    if (skip !== 'emp' && p.emp && r.emprendimiento !== p.emp) return false;
+    if (skip !== 'etapa' && p.etapa && r.etapa !== p.etapa) return false;
+    if (skip !== 'tipo' && p.tipo && r.tipo !== p.tipo) return false;
+    if (skip !== 'estilo' && p.estilo && r.estilo !== p.estilo) return false;
+    if (skip !== 'razon' && p.razon && r.razon !== p.razon) return false;
+    return true;
+  }
+  function filtered() {
+    const all = rows(); if (!all) return null;
+    const p = dash.params(); const key = JSON.stringify(p) + all.length;
+    if (key === cacheKey) return cache;
+    cacheKey = key; cache = all.filter((r) => match(r, p));
+    return cache;
+  }
+  const isLate = (r) => r._d && r._d < today && !CERRADAS.has(r.razon);
+  window.NT = { RAZONES, CERRADAS, LIMIT, rows, filtered, match, color, fmtDate, fmtMonth, fmtN, today, in12, empNum, isLate, parse };
+})();
+</script>
+
+<script>
+(function () {
+  const { fmtN, fmtDate, today, in12, isLate } = window.NT;
+  const dashIf = (el, v) => { el.textContent = v == null ? '—' : v; };
+
+  dash.draw('lead-n', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.length) : null); });
+  dash.draw('lead-late', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.filter(isLate).length) : null); });
+  function nextUp() {
+    const f = NT.filtered(); if (!f) return null;
+    const up = f.filter((r) => r._d && r._d >= today && !NT.CERRADAS.has(r.razon)).sort((a, b) => a._d - b._d);
+    return up.length ? up[0] : false;
+  }
+  dash.draw('lead-next', (el) => { const n = nextUp(); dashIf(el, n === null ? null : n ? fmtDate(n._d) : 'sin fechas futuras'); });
+  dash.draw('lead-next-emp', (el) => { const n = nextUp(); dashIf(el, n === null ? null : n ? n.emprendimiento + ' · ' + n.etapa : 'ningún emprendimiento'); });
+
+  dash.draw('k-total', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.length) : null); });
+  dash.draw('k-late', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.filter(isLate).length) : null); });
+  dash.draw('k-12m', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.filter((r) => r._d && r._d >= today && r._d < in12 && !NT.CERRADAS.has(r.razon)).length) : null); });
+  dash.draw('k-nodate', (el) => { const f = NT.filtered(); dashIf(el, f ? fmtN(f.filter((r) => !r._d).length) : null); });
+
+  // Selects
+  const SELS = [
+    ['sel-prov', 'prov', 'provincia', 'Todas las provincias'],
+    ['sel-emp', 'emp', 'emprendimiento', 'Todos los emprendimientos'],
+    ['sel-etapa', 'etapa', 'etapa', 'Todas las etapas'],
+    ['sel-tipo', 'tipo', 'tipo', 'Todos los tipos'],
+    ['sel-estilo', 'estilo', 'estilo', 'Todos los estilos'],
+    ['sel-razon', 'razon', 'razon', 'Todas las razones'],
+  ];
+  SELS.forEach(([name, param, col, allLabel]) => {
+    dash.draw(name, (sel) => {
+      const all = NT.rows();
+      const p = dash.params();
+      let opts = [];
+      if (all) {
+        const counts = d3.rollup(all.filter((r) => NT.match(r, p, param)), (v) => v.length, (r) => r[col]);
+        opts = Array.from(counts.keys());
+        if (param === 'emp') opts.sort((a, b) => NT.empNum(a) - NT.empNum(b) || a.localeCompare(b));
+        else if (param === 'razon') opts.sort((a, b) => NT.RAZONES.indexOf(a) - NT.RAZONES.indexOf(b));
+        else opts.sort((a, b) => a.localeCompare(b));
+        if (p[param] && !counts.has(p[param])) { opts.unshift(p[param]); counts.set(p[param], 0); }
+        sel.replaceChildren(new Option(allLabel, ''), ...opts.map((o) => new Option(o + ' (' + NT.fmtN(counts.get(o)) + ')', o)));
+      } else sel.replaceChildren(new Option(allLabel, ''));
+      sel.value = p[param] || '';
+      sel.onchange = () => {
+        const upd = { [param]: sel.value || null };
+        if (param === 'prov') { upd.emp = null; upd.etapa = null; }
+        if (param === 'emp') upd.etapa = null;
+        dash.setParams(upd);
+      };
+    });
+  });
+
+  const hist = document.querySelectorAll('#f-hist');
+  hist.forEach((h) => h.addEventListener('change', () => dash.setParams({ hist: h.checked })));
+  document.querySelectorAll('#f-reset').forEach((b) => b.addEventListener('click', () => dash.resetParams()));
+  dash.onData(() => { hist.forEach((h) => { h.checked = !!dash.params().hist; }); });
+})();
+</script>
+
+<script>
+(function () {
+  function tip(host) {
+    let t = host.querySelector(':scope > .nt-tip');
+    if (!t) { t = document.createElement('div'); t.className = 'nt-tip'; t.hidden = true; host.appendChild(t); }
+    return t;
+  }
+  function placeTip(t, host, ev) {
+    const b = host.getBoundingClientRect();
+    let x = ev.clientX - b.left + 14, y = ev.clientY - b.top + 14;
+    t.hidden = false;
+    const w = t.offsetWidth, h = t.offsetHeight;
+    if (x + w > host.clientWidth) x = Math.max(0, ev.clientX - b.left - w - 14);
+    if (y + h > host.scrollHeight) y = Math.max(0, ev.clientY - b.top - h - 14);
+    t.style.left = x + 'px'; t.style.top = y + 'px';
+  }
+  function fillTip(t, title, lines) {
+    t.replaceChildren();
+    const h = document.createElement('div'); h.className = 't'; h.textContent = title; t.appendChild(h);
+    lines.forEach(([label, n, col]) => {
+      const r = document.createElement('div'); r.className = 'r';
+      if (col) { const i = document.createElement('i'); i.style.background = col; r.appendChild(i); }
+      const s = document.createElement('span'); s.textContent = label; r.appendChild(s);
+      const b = document.createElement('b'); b.textContent = NT.fmtN(n); r.appendChild(b);
+      t.appendChild(r);
+    });
+  }
+  window.NTtip = { tip, placeTip, fillTip };
+
+  dash.draw('legend', (el) => {
+    const f = NT.filtered();
+    el.replaceChildren();
+    if (!f) { el.textContent = '—'; return; }
+    const present = new Set(f.map((r) => r.razon));
+    NT.RAZONES.filter((r) => present.has(r)).forEach((r) => {
+      const s = document.createElement('span'); const i = document.createElement('i'); i.style.background = NT.color(r);
+      s.appendChild(i); s.appendChild(document.createTextNode(r)); el.appendChild(s);
+    });
+  });
+
+  dash.draw('quarters', (el) => {
+    const f = NT.filtered();
+    el.replaceChildren();
+    if (!f) { el.textContent = '—'; return; }
+    const dated = f.filter((r) => r._d);
+    if (!dated.length) { el.textContent = 'No hay viviendas con fecha planificada para estos filtros.'; return; }
+    const qKey = (d) => d.getUTCFullYear() * 4 + Math.floor(d.getUTCMonth() / 3);
+    const ext = d3.extent(dated, (r) => qKey(r._d));
+    const lo = Math.min(ext[0], qKey(NT.today)), hi = Math.max(ext[1], qKey(NT.today));
+    const keys = d3.range(lo, hi + 1);
+    const razones = NT.RAZONES.filter((r) => dated.some((x) => x.razon === r));
+    const by = d3.rollup(dated, (v) => v.length, (r) => qKey(r._d), (r) => r.razon);
+    const table = keys.map((k) => { const o = { k }; razones.forEach((r) => { o[r] = (by.get(k) && by.get(k).get(r)) || 0; }); return o; });
+    const stack = d3.stack().keys(razones)(table);
+    const W = Math.max(280, el.clientWidth), H = 260;
+    const ymax = d3.max(table, (o) => d3.sum(razones, (r) => o[r])) || 1;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Unidades por trimestre de entrega');
+    const y = d3.scaleLinear([0, ymax], [H - 24, 8]).nice();
+    const yAxis = svg.append('g').call(d3.axisLeft(y).ticks(5).tickSize(0).tickFormat(d3.format('~s')));
+    yAxis.attr('font-size', null).attr('font-family', null);
+    let ml = 0; yAxis.selectAll('text').each(function () { ml = Math.max(ml, this.getComputedTextLength()); });
+    ml += 10; yAxis.attr('transform', `translate(${ml - 4},0)`); yAxis.select('.domain').remove();
+    yAxis.selectAll('text').style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)');
+    const x = d3.scaleBand(keys, [ml, W - 4]).paddingInner(keys.length > 40 ? 0.15 : 0.25);
+    svg.insert('g', ':first-child').selectAll('line').data(y.ticks(5)).join('line').attr('x1', ml).attr('x2', W - 4).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).style('stroke', 'var(--cds-chart-grid)');
+    const years = keys.filter((k) => k % 4 === 0);
+    const step = Math.ceil(years.length / Math.max(1, Math.floor((W - ml) / 46)));
+    svg.append('g').selectAll('text').data(years.filter((_, i) => i % step === 0)).join('text')
+      .attr('x', (k) => x(k)).attr('y', H - 6).style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text((k) => k / 4);
+    svg.append('line').attr('x1', ml).attr('x2', W - 4).attr('y1', y(0)).attr('y2', y(0)).style('stroke', 'var(--cds-chart-axis)');
+    const bars = svg.append('g');
+    stack.forEach((s) => {
+      bars.append('g').style('fill', NT.color(s.key)).selectAll('rect').data(s).join('rect')
+        .attr('x', (d) => x(d.data.k)).attr('width', x.bandwidth()).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1])));
+    });
+    const tk = qKey(NT.today);
+    const tx = x(tk) + x.bandwidth() * ((NT.today.getUTCMonth() % 3) / 3);
+    svg.append('line').attr('x1', tx).attr('x2', tx).attr('y1', 4).attr('y2', H - 24).style('stroke', '#FB7520').attr('stroke-width', 2).attr('stroke-dasharray', '4 3');
+    const t = NTtip.tip(el);
+    svg.append('g').selectAll('rect').data(table).join('rect').attr('x', (d) => x(d.k) - (x.step() - x.bandwidth()) / 2).attr('width', x.step()).attr('y', 0).attr('height', H - 24).style('fill', 'transparent')
+      .on('pointermove', (ev, d) => {
+        const lines = razones.filter((r) => d[r]).map((r) => [r, d[r], NT.color(r)]);
+        lines.push(['Total', d3.sum(razones, (r) => d[r]), null]);
+        NTtip.fillTip(t, `T${(d.k % 4) + 1} ${Math.floor(d.k / 4)}`, lines);
+        NTtip.placeTip(t, el, ev);
+      })
+      .on('pointerleave', () => { t.hidden = true; });
+  });
+
+  function groups(f) {
+    const dated = f.filter((r) => r._d);
+    const g = d3.groups(dated, (r) => r.provincia, (r) => r.emprendimiento, (r) => r.etapa);
+    const out = [];
+    g.sort((a, b) => a[0].localeCompare(b[0])).forEach(([prov, emps]) => {
+      out.push({ kind: 'prov', label: prov });
+      emps.sort((a, b) => NT.empNum(a[0]) - NT.empNum(b[0]) || a[0].localeCompare(b[0])).forEach(([emp, etapas]) => {
+        etapas.sort((a, b) => d3.min(a[1], (r) => r._d) - d3.min(b[1], (r) => r._d) || a[0].localeCompare(b[0])).forEach(([etapa, rs]) => {
+          const pts = d3.groups(rs, (r) => r.fecha).map(([fecha, v]) => ({ fecha, d: v[0]._d, rows: v }));
+          out.push({ kind: 'row', prov, emp, etapa, pts, n: rs.length });
+        });
+      });
+    });
+    return out;
+  }
+  function domain(f) {
+    const dated = f.filter((r) => r._d);
+    const e = d3.extent(dated, (r) => r._d);
+    let lo = d3.min([e[0], NT.today]), hi = d3.max([e[1], NT.today]);
+    lo = d3.utcYear.floor(lo); hi = d3.utcYear.ceil(new Date(+hi + 1));
+    return [lo, hi];
+  }
+  const MARGIN = { l: 24, r: 24 };
+
+  dash.draw('tl-axis', (el) => {
+    const f = NT.filtered();
+    el.replaceChildren();
+    if (!f || !f.some((r) => r._d)) return;
+    const W = Math.max(280, el.clientWidth);
+    const x = d3.scaleUtc(domain(f), [MARGIN.l, W - MARGIN.r]);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} 28`).attr('aria-hidden', 'true');
+    const ticks = x.ticks(Math.max(2, Math.floor(W / 70)));
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', (d) => x(d)).attr('y', 18).attr('text-anchor', 'middle')
+      .style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text((d) => d.getUTCFullYear());
+    const tx = x(NT.today);
+    svg.append('text').attr('x', tx).attr('y', 8).attr('text-anchor', 'middle').style('fill', '#FB7520').style('font-size', '10px').style('font-weight', 600).text('hoy');
+  });
+
+  dash.draw('timeline', (el) => {
+    const f = NT.filtered();
+    el.replaceChildren();
+    if (!f) { el.textContent = '—'; return; }
+    const gs = groups(f);
+    if (!gs.length) { el.textContent = 'No hay viviendas con fecha planificada para estos filtros.'; return; }
+    const W = Math.max(280, el.clientWidth);
+    const RH = 46, PH = 32;
+    let yy = 6; gs.forEach((g) => { g.y = yy; yy += g.kind === 'prov' ? PH : RH; });
+    const H = yy + 6;
+    const x = d3.scaleUtc(domain(f), [MARGIN.l, W - MARGIN.r]);
+    const maxN = d3.max(gs.filter((g) => g.kind === 'row'), (g) => d3.max(g.pts, (p) => p.rows.length)) || 1;
+    const r = d3.scaleSqrt([0, maxN], [0, 10]);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Línea de tiempo de entregas por emprendimiento y etapa');
+    svg.append('g').selectAll('line').data(x.ticks(Math.max(2, Math.floor(W / 70)))).join('line')
+      .attr('x1', (d) => x(d)).attr('x2', (d) => x(d)).attr('y1', 0).attr('y2', H).style('stroke', 'var(--cds-chart-grid)');
+    const tx = x(NT.today);
+    svg.append('line').attr('x1', tx).attr('x2', tx).attr('y1', 0).attr('y2', H).style('stroke', '#FB7520').attr('stroke-width', 2).attr('stroke-dasharray', '4 3');
+    const t = NTtip.tip(el);
+    gs.forEach((g) => {
+      const G = svg.append('g').attr('transform', `translate(0,${g.y})`);
+      if (g.kind === 'prov') {
+        G.append('text').attr('x', MARGIN.l).attr('y', 20).style('fill', 'var(--color-fg)').style('font-weight', 700).style('font-size', 'var(--cds-font-size-body)').text(g.label);
+        G.append('line').attr('x1', MARGIN.l).attr('x2', W - MARGIN.r).attr('y1', PH - 2).attr('y2', PH - 2).style('stroke', 'var(--color-border-line)');
+        return;
+      }
+      const lab = G.append('text').attr('class', 'nt-tl-label').attr('x', MARGIN.l).attr('y', 13).style('font-size', 'var(--cds-font-size-caption)');
+      lab.append('tspan').style('fill', 'var(--color-fg)').style('font-weight', 600).text(g.emp);
+      lab.append('tspan').style('fill', 'var(--color-fg-muted)').text('  ·  ' + g.etapa + '  ·  ' + NT.fmtN(g.n) + ' u.');
+      lab.on('click', () => dash.setParams({ prov: g.prov, emp: g.emp, etapa: null }));
+      const cy = 31;
+      const ext = d3.extent(g.pts, (p) => p.d);
+      G.append('line').attr('x1', x(ext[0])).attr('x2', x(ext[1])).attr('y1', cy).attr('y2', cy).style('stroke', 'var(--cds-chart-axis)').attr('stroke-width', 2).attr('stroke-linecap', 'round');
+      G.selectAll('circle').data(g.pts).join('circle').attr('cx', (p) => x(p.d)).attr('cy', cy).attr('r', (p) => Math.max(3, r(p.rows.length)))
+        .style('fill', (p) => {
+          const c = d3.rollups(p.rows, (v) => v.length, (q) => q.razon).sort((a, b) => b[1] - a[1]);
+          return NT.color(c[0][0]);
+        })
+        .attr('fill-opacity', 0.9).style('stroke', 'var(--color-panel)').attr('stroke-width', 1)
+        .style('stroke', (p) => p.rows.some(NT.isLate) ? 'var(--color-bad)' : 'var(--color-panel)').attr('stroke-width', (p) => p.rows.some(NT.isLate) ? 2 : 1)
+        .on('pointermove', (ev, p) => {
+          const lines = [];
+          d3.rollups(p.rows, (v) => v.length, (q) => q.razon).sort((a, b) => NT.RAZONES.indexOf(a[0]) - NT.RAZONES.indexOf(b[0])).forEach(([k, n]) => lines.push([k, n, NT.color(k)]));
+          d3.rollups(p.rows, (v) => v.length, (q) => q.estilo).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => lines.push(['Estilo: ' + k, n, null]));
+          d3.rollups(p.rows, (v) => v.length, (q) => q.tipo).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => lines.push(['Tipo: ' + k, n, null]));
+          NTtip.fillTip(t, NT.fmtDate(p.d) + ' · ' + g.emp + ' · ' + g.etapa, lines);
+          NTtip.placeTip(t, el, ev);
+        })
+        .on('pointerleave', () => { t.hidden = true; });
+    });
+  });
+})();
+</script>
+
+<script>
+(function () {
+  let sortCol = 'fecha', sortDir = 1;
+  const search = document.querySelectorAll('#t-search');
+  search.forEach((s) => s.addEventListener('input', () => { dash.draw('table'); dash.draw('table-count'); }));
+  const q = () => { let v = ''; search.forEach((s) => { v = s.value; }); return v.trim().toLowerCase(); };
+  function shown() {
+    const f = NT.filtered(); if (!f) return null;
+    const term = q();
+    const rs = term ? f.filter((r) => (r.nombre + ' ' + r.emprendimiento + ' ' + r.etapa + ' ' + r.estilo + ' ' + r.razon).toLowerCase().includes(term)) : f.slice();
+    rs.sort((a, b) => {
+      const va = a[sortCol], vb = b[sortCol];
+      if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1;
+      return sortDir * String(va).localeCompare(String(vb), 'es', { numeric: true });
+    });
+    return rs;
+  }
+  document.querySelectorAll('.nt-table th button[data-sort]').forEach((b) => b.addEventListener('click', () => {
+    const c = b.dataset.sort;
+    if (c === sortCol) sortDir = -sortDir; else { sortCol = c; sortDir = 1; }
+    document.querySelectorAll('.nt-table th').forEach((th) => th.setAttribute('aria-sort', th.dataset.field === sortCol ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
+    dash.draw('table');
+  }));
+  dash.draw('table-count', (el) => {
+    const rs = shown();
+    if (!rs) { el.textContent = '—'; return; }
+    el.textContent = rs.length > NT.LIMIT ? `Se muestran ${NT.fmtN(NT.LIMIT)} de ${NT.fmtN(rs.length)} unidades; usá los filtros o la búsqueda para acotar.` : `${NT.fmtN(rs.length)} unidades.`;
+  });
+  const COLS = ['fecha', 'emprendimiento', 'nombre', 'etapa', 'tipo', 'estilo', 'razon', 'avance', 'provincia'];
+  dash.draw('table', (tb) => {
+    const rs = shown();
+    tb.replaceChildren();
+    if (!rs) return;
+    const frag = document.createDocumentFragment();
+    rs.slice(0, NT.LIMIT).forEach((r) => {
+      const tr = document.createElement('tr'); tr.dataset.key = r.id;
+      COLS.forEach((c) => {
+        const td = document.createElement('td');
+        if (c === 'tipo' || c === 'avance' || c === 'provincia') td.className = 'nt-hide-sm';
+        if (c === 'razon') { const s = document.createElement('span'); s.className = 'nt-pill'; s.style.color = NT.color(r.razon); s.textContent = r.razon; td.appendChild(s); }
+        else td.textContent = r[c] == null ? '' : r[c];
+        if (c === 'fecha' && NT.isLate(r)) td.classList.add('nt-late');
+        tr.appendChild(td);
+      });
+      frag.appendChild(tr);
+    });
+    tb.appendChild(frag);
+  });
+})();
+</script>
+
+<script>
+(function () {
+  const c = (window.DATOS || {}).corte, el = document.getElementById('corte');
+  if (c && el) el.textContent = new Date(c + 'T00:00:00Z').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+})();
+</script>
+</div>
+</body>
+</html>

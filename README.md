@@ -14,6 +14,7 @@ Todo se publica con GitHub Pages bajo el mismo dominio, así que todas las pági
 | Análisis de Cabida | `cabida` | [mmmsa221/AnalisisCabida](https://github.com/mmmsa221/AnalisisCabida) | https://mmmsa221.github.io/AnalisisCabida/ |
 | Simulación de Plan de Inversión | `simulador` | este repo, carpeta `simulador/` | https://mmmsa221.github.io/simulador/ |
 | Licitaciones | `licitaciones` | este repo, carpeta `licitaciones/` | https://mmmsa221.github.io/licitaciones/ |
+| Entregas de viviendas Natania | `entregas` | este repo, carpeta `entregas/` | https://mmmsa221.github.io/entregas/ |
 | Tablero de Loteos Natania 360 | `loteos` | [mmmsa221/Ecipsa-Loteos](https://github.com/mmmsa221/Ecipsa-Loteos) | https://mmmsa221.github.io/Ecipsa-Loteos/ (tiene su propio ingreso) |
 
 ## Cómo trabajar en los repos
@@ -31,6 +32,16 @@ Todo se publica con GitHub Pages bajo el mismo dominio, así que todas las pági
 | `sesion.js` | Sesión compartida. Cada herramienta lo incluye y llama a `ECI.exigir('<código>')`. |
 | `eci.css` | Sistema visual común (barra, láminas, campos, botones). |
 | `sql/010_grupos.sql` | Grupos de acceso en Supabase (quién ve qué). |
+| `sql/020_entregas.sql` | Alta de la herramienta Entregas para los grupos `produccion` y `comercial`. |
+| `entregas/` | Tablero de fechas de entrega de viviendas Natania. Los datos (`datos.js`) salen del export de stock de Dynamics con `entregas/actualizar_datos.py`. |
+
+### Actualizar Entregas de viviendas
+
+1. Bajar de Dynamics el export "Stock Productos NATANIA y MA" (.xlsx).
+2. `python entregas/actualizar_datos.py "Stock_Productos_NATANIA_Y_MA_dd-mm-aaaa.xlsx"` (o pasarle el Excel a Claude). La fecha de corte sale del nombre del archivo.
+3. Subir el `entregas/datos.js` nuevo a `main`.
+
+`datos.js` está en un repo público: cualquiera con el link directo al archivo puede bajarlo.
 | `docs/ACCESOS.md` | Cómo dar de alta personas, armar grupos y sumar herramientas. |
 
 ## Supabase
