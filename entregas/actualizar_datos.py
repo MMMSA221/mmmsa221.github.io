@@ -2,9 +2,9 @@
 
 Uso:  python entregas/actualizar_datos.py "Stock_Productos_NATANIA_Y_MA_dd-mm-aaaa.xlsx" [--corte AAAA-MM-DD]
 
-- Toma la hoja "Productos activo Puntuales ..." y deja solo viviendas
-  (Casa, Casa Futura, Dúplex, Departamento) de emprendimientos Natania,
-  sin MilAires ni emprendimientos de terceros.
+- Toma la hoja "Productos activo Puntuales ..." y deja solo viviendas: Tipo Inmueble
+  Casa y Casa Futura (sin departamentos, dúplex, lotes, cocheras ni locales),
+  de emprendimientos Natania, sin MilAires ni emprendimientos de terceros.
 - Guarda el corte en entregas/historial/AAAA-MM-DD.json (la fecha sale del nombre
   del archivo o de --corte) y lo suma a entregas/historial/index.json.
 - Los cortes anteriores no se tocan: son la base de la comparación entre actualizaciones.
@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
-VIVIENDAS = ['Casa', 'Casa Futura', 'Departamento', 'Duplex', 'Departamento con pileta']
+VIVIENDAS = ['Casa', 'Casa Futura']
 PROVINCIAS = {'Cordoba': 'Córdoba', 'Tucuman': 'Tucumán', 'Neuquen': 'Neuquén', 'Central': 'Central (Paraguay)'}
 FECHA = 'Fecha Entrega Planificada (técnica)'
 COLS = ['id', 'nombre', 'provincia', 'emprendimiento', 'etapa', 'tipo', 'estilo', 'razon', 'avance', 'fecha']
@@ -34,9 +34,6 @@ def etapa(r):
     e = limpiar(r['Etapa'])
     if e and e.lower() != 'sin etapa':
         return re.sub(r'\betapa\b', 'Etapa', e)
-    ed = limpiar(r['Edificio'])
-    if ed and str(r['Tipo Inmueble']).startswith('Departamento'):
-        return ed  # los edificios casi nunca tienen etapa: se agrupan por torre
     return 'Sin etapa'
 
 

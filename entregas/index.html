@@ -105,15 +105,16 @@
 .nt-rep-head .prov { font-family: var(--cuerpo); font-weight: 400; font-size: 13px; color: var(--color-fg-muted); margin-left: 8px; }
 .nt-badge { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 4px 12px; border-radius: 8px; color: var(--nt-orange-txt); background: rgba(var(--nt-heat), .12); white-space: nowrap; }
 .nt-rep-wrap { overflow-x: auto; }
-.nt-rep-t { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
-.nt-rep-t th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--color-fg-muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
-.nt-rep-t td { padding: 9px 10px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.nt-rep-t { border-collapse: collapse; width: 100%; min-width: 880px; table-layout: fixed; font-size: 13.5px; font-variant-numeric: tabular-nums; color: var(--color-fg); }
+.nt-rep-t th { vertical-align: bottom; text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--color-fg-muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--color-border-line); }
+.nt-rep-t td { padding: 9px 10px; border-bottom: 1px solid var(--color-border-line); color: var(--color-fg); overflow-wrap: anywhere; }
+.nt-rep-t td.num { white-space: nowrap; }
 .nt-rep-t tr:last-child td { border-bottom: 0; }
 .nt-rep-t .num { text-align: right; }
 .nt-rep-t .sep { border-left: 2px solid var(--nt-orange); }
-.nt-rep-t .tot { font-weight: 800; color: var(--tinta); }
-.nt-rep-t .mut { color: var(--color-fg-muted); }
-.nt-rep-t .sinf { color: var(--nt-orange-txt); }
+.nt-rep-t td.tot { font-weight: 800; color: var(--tinta); }
+.nt-rep-t td.mut { color: var(--color-fg-muted); }
+.nt-rep-t td.sinf { color: var(--nt-orange-txt); }
 .nt-rep-t tfoot td { font-weight: 700; border-top: 1px solid var(--linea-fuerte); }
 .nt-was { display: block; font-size: 11px; color: var(--color-fg-muted); }
 .nt-d { display: block; font-size: 11px; font-weight: 700; }
@@ -376,8 +377,13 @@
   const CERRADAS = new Set(['Entregado', 'Escriturado']);
   const COMP = new Set(['Adjudicado', 'Reservado SAAT', 'Reservado-Canje', 'Reservado', 'Directorio - Reservado']);
   const RESERV = new Set(['Reservado SAAT', 'Reservado-Canje', 'Reservado', 'Directorio - Reservado']);
-  const TIPOS = ['Casa', 'Casa Futura', 'Duplex', 'Departamento', 'Departamento con pileta'];
-  const TIPO_LABEL = { 'Casa': 'Casa', 'Casa Futura': 'Casa futura', 'Duplex': 'Dúplex', 'Departamento': 'Depto.', 'Departamento con pileta': 'Depto. c/ pileta' };
+  const TIPOS = ['Casa', 'Casa Futura'];
+  const TIPO_LABEL = { 'Casa': 'Casa', 'Casa Futura': 'Casa futura' };
+  // Ordena etapas con números romanos (I, II, … IX) o arábigos en su orden real
+  const ROM = { I: 1, V: 5, X: 10, L: 50 };
+  const romano = (t) => { let n = 0; for (let i = 0; i < t.length; i++) { const a = ROM[t[i]], b = ROM[t[i + 1]] || 0; n += a < b ? -a : a; } return n; };
+  const etapaKey = (e) => e.replace(/\b([IVXL]+)\b/g, (m) => String(romano(m)).padStart(3, '0')).replace(/\d+/g, (m) => m.padStart(3, '0'));
+  const sortEtapa = (a, b) => etapaKey(a).localeCompare(etapaKey(b), 'es');
   const LIMIT = 1500;
   const fmtDate = (d) => new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(d);
   const fmtLong = (d) => new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
@@ -425,7 +431,7 @@
     return pVal;
   }
   const isLate = (r) => r._d && r._d < today && !CERRADAS.has(r.razon);
-  window.NT = { RAZONES, CERRADAS, COMP, RESERV, TIPOS, TIPO_LABEL, LIMIT, rows, prevRows, filtered, prevFiltered, match, color,
+  window.NT = { RAZONES, CERRADAS, COMP, RESERV, TIPOS, TIPO_LABEL, sortEtapa, LIMIT, rows, prevRows, filtered, prevFiltered, match, color,
     fmtDate, fmtLong, fmtCorte, fmtN, fmtD, today, in12, empNum, sortEmp, isLate };
 })();
 </script>
@@ -772,11 +778,15 @@
       const card = el('article', 'nt-rep-card');
       const head = el('div', 'nt-rep-head');
       const h3 = el('h3', null, emp); h3.appendChild(el('span', 'prov', rs[0].provincia)); head.appendChild(h3);
-      const etapas = d3.groups(rs, (r) => r.etapa).sort((a, b) => (d3.min(a[1], (r) => r._d) || Infinity) - (d3.min(b[1], (r) => r._d) || Infinity) || a[0].localeCompare(b[0], 'es', { numeric: true }));
+      const etapas = d3.groups(rs, (r) => r.etapa).sort((a, b) => (d3.min(a[1], (r) => r._d) || Infinity) - (d3.min(b[1], (r) => r._d) || Infinity) || NT.sortEtapa(a[0], b[0]));
       head.appendChild(el('span', 'nt-badge', fmtN(rs.length) + ' viviendas · ' + etapas.length + (etapas.length === 1 ? ' etapa' : ' etapas')));
       card.appendChild(head);
-      const tipos = NT.TIPOS.filter((t) => rs.some((r) => r.tipo === t));
+      const tipos = NT.TIPOS; // siempre las mismas columnas, para que todas las tablas queden alineadas
       const wrap = el('div', 'nt-rep-wrap'); const t = el('table', 'nt-rep-t');
+      const cg = el('colgroup'); const nNum = 1 + tipos.length + estados.length;
+      [['etapa', 22], ['fecha', 18]].forEach(([c, w]) => { const col = el('col', c); col.style.width = w + '%'; cg.appendChild(col); });
+      for (let i = 0; i < nNum; i++) { const col = el('col'); col.style.width = (60 / nNum) + '%'; cg.appendChild(col); }
+      t.appendChild(cg);
       const hr = el('tr');
       hr.appendChild(el('th', null, 'Etapa')); hr.appendChild(el('th', null, 'Fecha de entrega'));
       hr.appendChild(el('th', 'num sep', 'Viviendas'));
