@@ -21,8 +21,8 @@ import pandas as pd
 VIVIENDAS = ['Casa', 'Casa Futura']
 PROVINCIAS = {'Cordoba': 'Córdoba', 'Tucuman': 'Tucumán', 'Neuquen': 'Neuquén', 'Central': 'Central (Paraguay)'}
 FECHA = 'Fecha Entrega Planificada (técnica)'
-COLS = ['id', 'nombre', 'provincia', 'emprendimiento', 'etapa', 'tipo', 'estilo', 'razon', 'avance', 'fecha']
-DICT = ['provincia', 'emprendimiento', 'etapa', 'tipo', 'estilo', 'razon', 'avance']  # columnas guardadas como índice
+COLS = ['id', 'nombre', 'provincia', 'emprendimiento', 'etapa', 'tipo', 'estilo', 'dorm', 'razon', 'avance', 'fecha']
+DICT = ['provincia', 'emprendimiento', 'etapa', 'tipo', 'estilo', 'dorm', 'razon', 'avance']  # columnas guardadas como índice
 HIST = Path(__file__).with_name('historial')
 
 
@@ -35,6 +35,15 @@ def etapa(r):
     if e and e.lower() != 'sin etapa':
         return re.sub(r'\betapa\b', 'Etapa', e)
     return 'Sin etapa'
+
+
+def dormitorios(v):
+    # Columna K "Cantidad Dormitorio". 0 o vacío no es un dato real para una casa.
+    try:
+        n = int(v)
+    except (TypeError, ValueError):
+        return 'Sin dato'
+    return f'{n} dorm.' if n > 0 else 'Sin dato'
 
 
 def corte_desde_nombre(nombre):
@@ -58,7 +67,8 @@ def leer(xlsx):
             'emprendimiento': limpiar(r['Emprendimiento']),
             'etapa': etapa(r),
             'tipo': r['Tipo Inmueble'],
-            'estilo': limpiar(r['Estilo Producto']) or 'Sin estilo',
+            'estilo': limpiar(r['Estilo Producto']) or 'Sin estilo',   # columna AK
+            'dorm': dormitorios(r['Cantidad Dormitorio']),               # columna K
             'razon': limpiar(r['Razón para el estado']) or 'Sin dato',
             'avance': limpiar(r['Avance de Obra']) or 'Sin dato',
             'fecha': f.strftime('%Y-%m-%d') if pd.notna(f) else None,

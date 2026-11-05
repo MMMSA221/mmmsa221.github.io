@@ -109,6 +109,22 @@
 .nt-rep-t th { vertical-align: bottom; text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--color-fg-muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--color-border-line); }
 .nt-rep-t td { padding: 9px 10px; border-bottom: 1px solid var(--color-border-line); color: var(--color-fg); overflow-wrap: anywhere; }
 .nt-rep-t td.num { white-space: nowrap; }
+.nt-et { all: unset; cursor: pointer; display: inline-flex; align-items: flex-start; gap: 6px; font-weight: 600; color: var(--color-fg); border-radius: 4px; }
+.nt-et::before { content: "▸"; color: var(--nt-orange); font-size: 12px; line-height: 1.6; transition: transform 150ms ease-out; }
+.nt-et[aria-expanded="true"]::before { transform: rotate(90deg); }
+.nt-et:hover { text-decoration: underline; text-underline-offset: 3px; }
+.nt-et:focus-visible { outline: 3px solid var(--nt-orange); outline-offset: 2px; }
+.nt-rep-t tr.abierta td { background: rgba(var(--nt-heat), .07); border-bottom-color: transparent; }
+.nt-rep-t tr.nt-comp-row > td { padding: 0 0 12px; background: rgba(var(--nt-heat), .07); }
+.nt-comp { margin: 0 10px; padding: 16px; background: var(--hoja); border: 1px solid var(--linea); border-radius: 8px; display: flex; flex-direction: column; gap: 10px; }
+.nt-comp h4 { margin: 0 0 6px; font-family: var(--tit); font-weight: 800; font-size: 14px; color: var(--tinta); }
+.nt-comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 16px 24px; }
+.nt-comp-list { max-height: 320px; overflow: auto; border: 1px solid var(--linea); border-radius: 8px; }
+.nt-rep-t .nt-comp-t { border-collapse: collapse; width: 100%; font-size: 12.5px; table-layout: auto; }
+.nt-rep-t .nt-comp-t th { position: sticky; top: 0; background: var(--hoja); padding: 6px 8px; font-size: 10.5px; white-space: nowrap; }
+.nt-rep-t .nt-comp-t td { padding: 5px 8px; border-bottom: 1px solid var(--linea); background: none; }
+.nt-rep-t .nt-comp-t td.cero { color: var(--color-fg-muted); opacity: .5; }
+.nt-rep-t .nt-comp-t tfoot td { font-weight: 700; border-top: 1px solid var(--linea-fuerte); border-bottom: 0; }
 .nt-rep-t tr:last-child td { border-bottom: 0; }
 .nt-rep-t .num { text-align: right; }
 .nt-rep-t .sep { border-left: 2px solid var(--nt-orange); }
@@ -158,7 +174,7 @@
 /* Datos y estado. Cada export de Dynamics es un "corte" en historial/AAAA-MM-DD.json; historial/index.json los lista
    con un resumen para la evolución. Se carga el último corte y, si se elige, uno anterior para comparar. */
 (function () {
-  const DEF = { prov: '', emp: '', etapa: '', tipo: '', estilo: '', razon: '', avance: '', hist: false, cmp: '', modo: 'comp', tab: 'calendario' };
+  const DEF = { prov: '', emp: '', etapa: '', tipo: '', estilo: '', dorm: '', razon: '', avance: '', hist: false, cmp: '', modo: 'comp', tab: 'calendario' };
   const KEEP = ['cmp', 'modo', 'tab'];
   let params = { ...DEF };
   const S = { idx: null, cur: null, prev: null, prevCorte: null, err: null };
@@ -170,6 +186,7 @@
       const o = {};
       cols.forEach((c, i) => { o[c] = dic[c] ? dic[c][r[i]] : r[i]; });
       o._d = o.fecha ? new Date(o.fecha + 'T00:00:00Z') : null;
+      if (!o.dorm) o.dorm = 'Sin dato';
       return o;
     });
   }
@@ -241,6 +258,7 @@
     <div class="nt-field"><label for="f-tipo">Tipo de vivienda</label><select id="f-tipo" data-draw="sel-tipo"></select></div>
     <div class="nt-field"><label for="f-estilo">Estilo de producto</label><select id="f-estilo" data-draw="sel-estilo"></select></div>
     <div class="nt-field"><label for="f-razon">Razón para el estado</label><select id="f-razon" data-draw="sel-razon"></select></div>
+    <div class="nt-field"><label for="f-dorm">Dormitorios</label><select id="f-dorm" data-draw="sel-dorm"></select></div>
     <div class="nt-field"><label for="f-avance">Avance de obra</label><select id="f-avance" data-draw="sel-avance"></select></div>
     <label class="nt-check" for="f-hist"><input type="checkbox" id="f-hist"> Incluir entregadas y escrituradas</label>
     <button type="button" class="nt-btn" id="f-reset">Limpiar filtros</button>
@@ -269,7 +287,7 @@
     </div>
     <div class="nt-card" id="reporte">
       <h2>Reporte por emprendimiento y etapa</h2>
-      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por tipo y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas.</p>
+      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por tipo y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas. <b>Tocá una etapa</b> para ver qué la compone: estilos, dormitorios, estados y la lista de unidades.</p>
     </div>
     <div class="nt-rep" data-draw="reporte"></div>
     <div class="nt-card" id="detalle">
@@ -285,6 +303,7 @@
             <th data-field="etapa"><button type="button" data-sort="etapa">Etapa</button></th>
             <th data-field="tipo" class="nt-hide-sm"><button type="button" data-sort="tipo">Tipo</button></th>
             <th data-field="estilo"><button type="button" data-sort="estilo">Estilo</button></th>
+            <th data-field="dorm"><button type="button" data-sort="dorm">Dorm.</button></th>
             <th data-field="razon"><button type="button" data-sort="razon">Razón para el estado</button></th>
             <th data-field="avance" class="nt-hide-sm"><button type="button" data-sort="avance">Avance de obra</button></th>
             <th data-field="provincia" class="nt-hide-sm"><button type="button" data-sort="provincia">Provincia</button></th>
@@ -415,6 +434,7 @@
     if (skip !== 'estilo' && p.estilo && r.estilo !== p.estilo) return false;
     if (skip !== 'razon' && p.razon && r.razon !== p.razon) return false;
     if (skip !== 'avance' && p.avance && r.avance !== p.avance) return false;
+    if (skip !== 'dorm' && p.dorm && (r.dorm || 'Sin dato') !== p.dorm) return false;
     return true;
   }
   let fKey = null, fVal = null, pKey = null, pVal = null;
@@ -489,6 +509,7 @@
     ['sel-estilo', 'estilo', 'estilo', 'Todos los estilos'],
     ['sel-razon', 'razon', 'razon', 'Todas las razones'],
     ['sel-avance', 'avance', 'avance', 'Todo avance de obra'],
+    ['sel-dorm', 'dorm', 'dorm', 'Todos los dormitorios'],
   ];
   SELS.forEach(([name, param, col, allLabel]) => {
     dash.draw(name, (sel) => {
@@ -643,7 +664,7 @@
   function shown() {
     const f = NT.filtered(); if (!f) return null;
     const term = search.value.trim().toLowerCase();
-    const rs = term ? f.filter((r) => (r.nombre + ' ' + r.emprendimiento + ' ' + r.etapa + ' ' + r.estilo + ' ' + r.razon).toLowerCase().includes(term)) : f.slice();
+    const rs = term ? f.filter((r) => (r.nombre + ' ' + r.emprendimiento + ' ' + r.etapa + ' ' + r.estilo + ' ' + r.dorm + ' ' + r.razon).toLowerCase().includes(term)) : f.slice();
     rs.sort((a, b) => {
       const va = a[sortCol], vb = b[sortCol];
       if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1;
@@ -662,7 +683,7 @@
     if (!rs) { el.textContent = '—'; return; }
     el.textContent = rs.length > NT.LIMIT ? `Se muestran ${NT.fmtN(NT.LIMIT)} de ${NT.fmtN(rs.length)} unidades; usá los filtros o la búsqueda para acotar.` : `${NT.fmtN(rs.length)} unidades.`;
   });
-  const COLS = ['fecha', 'emprendimiento', 'nombre', 'etapa', 'tipo', 'estilo', 'razon', 'avance', 'provincia'];
+  const COLS = ['fecha', 'emprendimiento', 'nombre', 'etapa', 'tipo', 'estilo', 'dorm', 'razon', 'avance', 'provincia'];
   dash.draw('table', (tb) => {
     const rs = shown();
     tb.replaceChildren();
@@ -759,6 +780,55 @@
     if (sf) t += ' · ' + sf + ' sin fecha';
     return { t, sinf: false, key: ds.join('|'), multi: ds.length > 1 };
   }
+  const ABIERTAS = new Set();   // etapas desplegadas (emprendimiento|etapa); se mantienen al cambiar filtros
+  const DORMS = ['1 dorm.', '2 dorm.', '3 dorm.', '4 dorm.', '5 dorm.', 'Sin dato'];
+  function cruce(ers, filaKey, filaOrden, colKey, colOrden, titulo) {
+    const filas = Array.from(new Set(ers.map((r) => r[filaKey]))).sort(filaOrden);
+    const cols = Array.from(new Set(ers.map((r) => r[colKey]))).sort(colOrden);
+    const m = d3.rollup(ers, (v) => v.length, (r) => r[filaKey], (r) => r[colKey]);
+    const t = el('table', 'nt-comp-t');
+    const hr = el('tr'); hr.appendChild(el('th', null, titulo)); cols.forEach((c) => hr.appendChild(el('th', 'num', c))); hr.appendChild(el('th', 'num', 'Total'));
+    const th = el('thead'); th.appendChild(hr); t.appendChild(th);
+    const tb = el('tbody');
+    filas.forEach((f) => {
+      const tr = el('tr'); tr.appendChild(el('td', null, f));
+      cols.forEach((c) => { const n = (m.get(f) && m.get(f).get(c)) || 0; tr.appendChild(el('td', 'num' + (n ? '' : ' cero'), n ? fmtN(n) : '·')); });
+      tr.appendChild(el('td', 'num tot', fmtN(d3.sum(m.get(f).values())))); tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    const tf = el('tfoot'); const fr = el('tr'); fr.appendChild(el('td', null, 'Total'));
+    cols.forEach((c) => fr.appendChild(el('td', 'num', fmtN(ers.filter((r) => r[colKey] === c).length))));
+    fr.appendChild(el('td', 'num tot', fmtN(ers.length))); tf.appendChild(fr); t.appendChild(tf);
+    return t;
+  }
+  function composicion(ers, ncols) {
+    const tr = el('tr', 'nt-comp-row'); const td = el('td'); td.colSpan = ncols; tr.appendChild(td);
+    const box = el('div', 'nt-comp');
+    const porNombre = (a, b) => a.localeCompare(b, 'es');
+    const ordDorm = (a, b) => DORMS.indexOf(a) - DORMS.indexOf(b);
+    const ordRazon = (a, b) => NT.RAZONES.indexOf(a) - NT.RAZONES.indexOf(b);
+    const grid = el('div', 'nt-comp-grid');
+    const b1 = el('div'); b1.appendChild(el('h4', null, 'Estilo de producto por dormitorios')); b1.appendChild(cruce(ers, 'estilo', porNombre, 'dorm', ordDorm, 'Estilo')); grid.appendChild(b1);
+    const b2 = el('div'); b2.appendChild(el('h4', null, 'Razón para el estado por estilo')); b2.appendChild(cruce(ers, 'razon', ordRazon, 'estilo', porNombre, 'Razón')); grid.appendChild(b2);
+    box.appendChild(grid);
+    box.appendChild(el('h4', null, 'Unidades de la etapa (' + fmtN(ers.length) + ')'));
+    const lw = el('div', 'nt-comp-list'); const lt = el('table', 'nt-comp-t');
+    const hr = el('tr'); ['Unidad', 'Tipo', 'Estilo', 'Dorm.', 'Razón para el estado', 'Avance de obra', 'Fecha de entrega'].forEach((h) => hr.appendChild(el('th', null, h)));
+    const th = el('thead'); th.appendChild(hr); lt.appendChild(th);
+    const tb = el('tbody');
+    ers.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true })).forEach((r) => {
+      const row = el('tr');
+      row.appendChild(el('td', null, r.nombre)); row.appendChild(el('td', null, NT.TIPO_LABEL[r.tipo] || r.tipo));
+      row.appendChild(el('td', null, r.estilo)); row.appendChild(el('td', null, r.dorm));
+      const rz = el('td'); const pill = el('span', 'nt-pill', r.razon); pill.style.color = NT.color(r.razon); rz.appendChild(pill); row.appendChild(rz);
+      row.appendChild(el('td', null, r.avance));
+      const fe = el('td', NT.isLate(r) ? 'nt-late' : null, r._d ? fmtDate(r._d) : 'Sin fecha'); row.appendChild(fe);
+      tb.appendChild(row);
+    });
+    lt.appendChild(tb); lw.appendChild(lt); box.appendChild(lw);
+    td.appendChild(box);
+    return tr;
+  }
   dash.draw('reporte', (host) => {
     host.replaceChildren();
     const f = NT.filtered(); if (!f) return;
@@ -794,9 +864,18 @@
       estados.forEach(([lab]) => hr.appendChild(el('th', 'num', lab)));
       const th = el('thead'); th.appendChild(hr); t.appendChild(th);
       const tb = el('tbody');
+      const ncols = 3 + tipos.length + estados.length;
       const fila = (label, ers, prevErs, isTotal) => {
         const tr = el('tr');
-        tr.appendChild(el('td', null, label));
+        if (isTotal) tr.appendChild(el('td', null, label));
+        else {
+          const k = emp + '|' + label, open = ABIERTAS.has(k);
+          const td = el('td'); const b = el('button', 'nt-et', label); b.type = 'button';
+          b.setAttribute('aria-expanded', String(open)); b.title = open ? 'Ocultar el detalle de la etapa' : 'Ver qué compone la etapa';
+          b.addEventListener('click', () => { if (ABIERTAS.has(k)) ABIERTAS.delete(k); else ABIERTAS.add(k); dash.draw('reporte'); });
+          td.appendChild(b); tr.appendChild(td);
+          if (open) tr.classList.add('abierta');
+        }
         const ft = fechaTxt(ers); const fd = el('td', ft.sinf ? 'sinf' : null, ft.t);
         if (prevErs && !isTotal) { const pft = fechaTxt(prevErs); if (pft.key !== ft.key) fd.appendChild(el('span', 'nt-was', 'antes: ' + pft.t)); }
         if (!prevErs && pf && !isTotal) fd.appendChild(el('span', 'nt-was', 'nueva en este corte'));
@@ -808,7 +887,10 @@
         estados.forEach(([, fn]) => { const n = ers.filter(fn).length; tr.appendChild(el('td', 'num mut', fmtN(n))); });
         return tr;
       };
-      etapas.forEach(([et, ers]) => tb.appendChild(fila(et, ers, prevBy && prevBy.get(emp) ? prevBy.get(emp).get(et) : null, false)));
+      etapas.forEach(([et, ers]) => {
+        tb.appendChild(fila(et, ers, prevBy && prevBy.get(emp) ? prevBy.get(emp).get(et) : null, false));
+        if (ABIERTAS.has(emp + '|' + et)) tb.appendChild(composicion(ers, ncols));
+      });
       t.appendChild(tb);
       if (etapas.length > 1) {
         const tf = el('tfoot'); const prevAll = prevBy && prevBy.get(emp) ? Array.from(prevBy.get(emp).values()).flat() : [];
