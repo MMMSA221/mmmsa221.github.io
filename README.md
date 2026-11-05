@@ -33,19 +33,16 @@ Todo se publica con GitHub Pages bajo el mismo dominio, así que todas las pági
 | `eci.css` | Sistema visual común (barra, láminas, campos, botones). |
 | `sql/010_grupos.sql` | Grupos de acceso en Supabase (quién ve qué). |
 | `sql/020_entregas.sql` | Alta de la herramienta Entregas para los grupos `produccion` y `comercial`. |
-| `entregas/` | Tablero de fechas de entrega de viviendas Natania. Los datos (`datos.js`) salen del export de stock de Dynamics con `entregas/actualizar_datos.py`. |
-
-### Actualizar Entregas de viviendas
-
-1. Bajar de Dynamics el export "Stock Productos NATANIA y MA" (.xlsx).
-2. `python entregas/actualizar_datos.py "Stock_Productos_NATANIA_Y_MA_dd-mm-aaaa.xlsx"` (o pasarle el Excel a Claude). La fecha de corte sale del nombre del archivo.
-3. Subir el `entregas/datos.js` nuevo a `main`.
-
-`datos.js` está en un repo público: cualquiera con el link directo al archivo puede bajarlo.
+| `entregas/` | Tablero de entregas de viviendas Natania: calendario, reporte por emprendimiento y año, y cambios entre cortes. |
+| `entregas/historial/` | Un archivo por export de Dynamics (`AAAA-MM-DD.json`) e `index.json` con la lista de cortes y su resumen. |
 | `docs/ACCESOS.md` | Cómo dar de alta personas, armar grupos y sumar herramientas. |
 
-## Supabase
+### Actualizar Entregas de viviendas (mensual o trimestral)
 
-Un solo proyecto, el "Supabase de Herramientas" (`xwprtfxtrwcyrzdiamvd`), maneja usuarios, permisos y los datos de Cabida y del Simulador. La clave que aparece en `sesion.js` es la pública: la protección la dan las políticas RLS.
+1. Bajar de Dynamics el export "Stock Productos NATANIA y MA" (.xlsx), con la fecha en el nombre (`..._dd-mm-aaaa_...`).
+2. `python entregas/actualizar_datos.py "Stock_Productos_NATANIA_Y_MA_dd-mm-aaaa.xlsx"` (o pasarle el Excel a Claude). Si el nombre no trae la fecha: `--corte AAAA-MM-DD`.
+3. Subir a `main` el archivo nuevo de `entregas/historial/` y el `index.json` actualizado.
 
-El Tablero de Loteos usa **otro** Supabase y sus propios usuarios.
+Cada carga queda como un **corte**: los anteriores no se borran y son la base de la pestaña "Cambios entre cortes". Cargar de nuevo la misma fecha reemplaza ese corte.
+
+Los archivos de `entregas/historial/` están en un repo público: cualquiera con el link directo los puede bajar.
