@@ -105,10 +105,16 @@
 .nt-rep-head .prov { font-family: var(--cuerpo); font-weight: 400; font-size: 13px; color: var(--color-fg-muted); margin-left: 8px; }
 .nt-badge { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 4px 12px; border-radius: 8px; color: var(--nt-orange-txt); background: rgba(var(--nt-heat), .12); white-space: nowrap; }
 .nt-rep-wrap { overflow-x: auto; }
-.nt-rep-t { border-collapse: collapse; width: 100%; min-width: 880px; table-layout: fixed; font-size: 13.5px; font-variant-numeric: tabular-nums; color: var(--color-fg); }
-.nt-rep-t th { vertical-align: bottom; text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--color-fg-muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--color-border-line); }
+.nt-rep-t { border-collapse: collapse; width: 100%; min-width: 1000px; table-layout: fixed; font-size: 13.5px; font-variant-numeric: tabular-nums; color: var(--color-fg); }
+.nt-rep-t th { vertical-align: bottom; text-align: left; font-size: 12px; color: var(--color-fg-muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--color-border-line); }
+.nt-rep-t th.num, .nt-rep-t td.num { padding-left: 4px; padding-right: 8px; }
+.nt-rep-t tr.grp th { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; text-align: center; color: var(--nt-orange-txt); border-bottom: 2px solid rgba(var(--nt-heat), .35); padding: 4px 10px; }
+.nt-rep-t tr.grp th:first-child { border-bottom: 0; }
+.nt-rep-t .nt-comp-t th { text-transform: uppercase; letter-spacing: .05em; }
 .nt-rep-t td { padding: 9px 10px; border-bottom: 1px solid var(--color-border-line); color: var(--color-fg); overflow-wrap: anywhere; }
 .nt-rep-t td.num { white-space: nowrap; }
+.nt-rep-t .sep2 { border-left: 1px solid var(--linea-fuerte); }
+.nt-rep-t td.cero { color: var(--color-fg-muted); opacity: .45; }
 .nt-et { all: unset; cursor: pointer; display: inline-flex; align-items: flex-start; gap: 6px; font-weight: 600; color: var(--color-fg); border-radius: 4px; }
 .nt-et::before { content: "▸"; color: var(--nt-orange); font-size: 12px; line-height: 1.6; transition: transform 150ms ease-out; }
 .nt-et[aria-expanded="true"]::before { transform: rotate(90deg); }
@@ -287,7 +293,7 @@
     </div>
     <div class="nt-card" id="reporte">
       <h2>Reporte por emprendimiento y etapa</h2>
-      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por tipo y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas. <b>Tocá una etapa</b> para ver qué la compone: estilos, dormitorios, estados y la lista de unidades.</p>
+      <p class="nt-note">Una tabla por emprendimiento con sus etapas, la fecha de entrega planificada y las viviendas por estilo de producto y por razón para el estado. Sigue todos los filtros de arriba (por ejemplo, Avance de obra = Pozo). Si hay un corte para comparar, se marca la fecha anterior cuando cambió y la diferencia de viviendas. <b>Tocá una etapa</b> para ver qué la compone: estilos, dormitorios, estados y la lista de unidades.</p>
     </div>
     <div class="nt-rep" data-draw="reporte"></div>
     <div class="nt-card" id="detalle">
@@ -843,6 +849,8 @@
       ['No disp.', (r) => r.razon === 'No Disponible'],
     ];
     if (p.hist) estados.push(['Escriturado', (r) => r.razon === 'Escriturado'], ['Entregado', (r) => r.razon === 'Entregado']);
+    const ESTILOS = ['Americana', 'Europea', 'Futura', 'Futura Plus', 'Mediterranea'];
+    const estilos = ESTILOS.concat(Array.from(new Set(f.map((r) => r.estilo))).filter((e) => !ESTILOS.includes(e)).sort());
     const frag = document.createDocumentFragment();
     byEmp.forEach(([emp, rs]) => {
       const card = el('article', 'nt-rep-card');
@@ -851,18 +859,22 @@
       const etapas = d3.groups(rs, (r) => r.etapa).sort((a, b) => (d3.min(a[1], (r) => r._d) || Infinity) - (d3.min(b[1], (r) => r._d) || Infinity) || NT.sortEtapa(a[0], b[0]));
       head.appendChild(el('span', 'nt-badge', fmtN(rs.length) + ' viviendas · ' + etapas.length + (etapas.length === 1 ? ' etapa' : ' etapas')));
       card.appendChild(head);
-      const tipos = NT.TIPOS; // siempre las mismas columnas, para que todas las tablas queden alineadas
+      const tipos = estilos; // columnas por estilo (columna AK), las mismas en todas las tablas para que queden alineadas
       const wrap = el('div', 'nt-rep-wrap'); const t = el('table', 'nt-rep-t');
       const cg = el('colgroup'); const nNum = 1 + tipos.length + estados.length;
-      [['etapa', 22], ['fecha', 18]].forEach(([c, w]) => { const col = el('col', c); col.style.width = w + '%'; cg.appendChild(col); });
-      for (let i = 0; i < nNum; i++) { const col = el('col'); col.style.width = (60 / nNum) + '%'; cg.appendChild(col); }
+      [['etapa', 17], ['fecha', 13]].forEach(([c, w]) => { const col = el('col', c); col.style.width = w + '%'; cg.appendChild(col); });
+      for (let i = 0; i < nNum; i++) { const col = el('col'); col.style.width = (70 / nNum) + '%'; cg.appendChild(col); }
       t.appendChild(cg);
       const hr = el('tr');
       hr.appendChild(el('th', null, 'Etapa')); hr.appendChild(el('th', null, 'Fecha de entrega'));
       hr.appendChild(el('th', 'num sep', 'Viviendas'));
-      tipos.forEach((tp) => hr.appendChild(el('th', 'num', NT.TIPO_LABEL[tp])));
-      estados.forEach(([lab]) => hr.appendChild(el('th', 'num', lab)));
-      const th = el('thead'); th.appendChild(hr); t.appendChild(th);
+      tipos.forEach((tp) => hr.appendChild(el('th', 'num', tp === 'Mediterranea' ? 'Mediterránea' : tp)));
+      estados.forEach(([lab], i) => hr.appendChild(el('th', 'num' + (i ? '' : ' sep2'), lab)));
+      const gr = el('tr', 'grp');
+      const g0 = el('th', null, ''); g0.colSpan = 3; gr.appendChild(g0);
+      const g1 = el('th', 'num', 'Estilo de producto'); g1.colSpan = tipos.length; gr.appendChild(g1);
+      const g2 = el('th', 'num sep2', 'Razón para el estado'); g2.colSpan = estados.length; gr.appendChild(g2);
+      const th = el('thead'); th.appendChild(gr); th.appendChild(hr); t.appendChild(th);
       const tb = el('tbody');
       const ncols = 3 + tipos.length + estados.length;
       const fila = (label, ers, prevErs, isTotal) => {
@@ -883,8 +895,8 @@
         const vt = el('td', 'num sep tot', fmtN(ers.length));
         if (pf) { const d = delta(ers.length - (prevErs ? prevErs.length : 0)); if (d) vt.appendChild(d); }
         tr.appendChild(vt);
-        tipos.forEach((tp) => tr.appendChild(el('td', 'num', fmtN(ers.filter((r) => r.tipo === tp).length))));
-        estados.forEach(([, fn]) => { const n = ers.filter(fn).length; tr.appendChild(el('td', 'num mut', fmtN(n))); });
+        tipos.forEach((tp) => { const n = ers.filter((r) => r.estilo === tp).length; tr.appendChild(el('td', 'num' + (n ? '' : ' cero'), fmtN(n))); });
+        estados.forEach(([, fn], i) => { const n = ers.filter(fn).length; tr.appendChild(el('td', 'num mut' + (i ? '' : ' sep2'), fmtN(n))); });
         return tr;
       };
       etapas.forEach(([et, ers]) => {
